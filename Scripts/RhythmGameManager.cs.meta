@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 25975ab29240f0b4ab888eb015758544
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - notePrefab: {instanceID: 0}
+  - noteChart: {instanceID: 0}
+  - audioSource: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
