@@ -217,7 +217,7 @@ MonoBehaviour:
     dialogueLines:
     - characterName: "\u042D\u043B\u043E\u0438\u0437\u0430"
       avatar: {fileID: 0}
-      text: "\u041C\u044F\u0443"
+      text: "\u041C\u0430\u0443"
     advanceTaskOnComplete: 1
 --- !u!1 &73092465
 GameObject:
@@ -2281,14 +2281,11 @@ MonoBehaviour:
   speakerNameText: {fileID: 1032449149}
   portraitImage: {fileID: 290656680}
   dialogues:
-  - "\u041C\u044F\u0443"
-  - "\u041B\u044F"
+  - "\u041C\u044F"
   speakerNames:
-  - "\u041C\u0438"
-  - "\u041B\u044F\u044F"
+  - "\u0421\u043B\u0438\u0432\u0430"
   portraits:
-  - {fileID: 21300000, guid: f26b94882158eeb4bb81a36ede574fd8, type: 3}
-  - {fileID: 21300000, guid: f26b94882158eeb4bb81a36ede574fd8, type: 3}
+  - {fileID: 21300000, guid: a1e163fae30ba1342adc8dbcde2991bc, type: 3}
   player: {fileID: 1566137936}
 --- !u!4 &712644487
 Transform:
