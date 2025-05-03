@@ -1,7 +1,18 @@
 ﻿using UnityEngine;
 using SQLite4Unity3d;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using System.Linq;
 
+/// <summary>
+/// Менеджер сохранений: хранит положение игрока, флаги катсцен и обучения в SQLite.
+/// Требует наличие модели CheckpointRecord со свойствами:
+///   string PlayerID;
+///   string SceneName;
+///   float PosX, PosY;
+///   bool CutsceneCompleted;
+///   bool TutorialCompleted;
+/// </summary>
 public class GameSaveManager : MonoBehaviour
 {
     public static GameSaveManager instance;
@@ -9,8 +20,9 @@ public class GameSaveManager : MonoBehaviour
 
     void Awake()
     {
-        // Инициализация базы
+        // Инициализируем БД (путь задаёт ваш Database.Init())
         Database.Init();
+
         if (instance == null)
         {
             instance = this;
@@ -19,121 +31,158 @@ public class GameSaveManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    // ===== Флаг обучения =====
-    /// <summary>
-    /// Установить, что обучение пройдено.
-    /// </summary>
-    public void SetTutorialCompleted(bool value)
-    {
-        PlayerPrefs.SetInt("TutorialCompleted", value ? 1 : 0);
-        PlayerPrefs.Save();
-        Debug.Log($"[GameSaveManager] TutorialCompleted = {value}");
-    }
+    //=======================================
+    // Позиция игрока
+    //=======================================
 
     /// <summary>
-    /// Проверить, пройдено ли обучение.
+    /// Сохраняет позицию игрока без изменения флагов.
     /// </summary>
-    public bool IsTutorialCompleted()
-    {
-        return PlayerPrefs.GetInt("TutorialCompleted", 0) == 1;
-    }
-
-    // ===== Сохранение положения игрока (не затрагивает флаги) =====
     public void SavePlayerPosition(Vector2 position)
     {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite);
-        var rec = conn.Find<CheckpointRecord>(PlayerId)
-                  ?? new CheckpointRecord { PlayerID = PlayerId };
-
-        rec.SceneName = SceneManager.GetActiveScene().name;
-        rec.PosX = position.x;
-        rec.PosY = position.y;
-        // сохраняем существующие флаги катсцен
-        conn.InsertOrReplace(rec);
-        conn.Close();
-
-        Debug.Log($"[GameSaveManager] SavePlayerPosition → Scene={rec.SceneName}, Pos=({rec.PosX},{rec.PosY})");
-    }
-
-    // ===== Сохранение чекпоинта + флаг первой катсцены =====
-    public void SaveCheckpoint(Vector2 position, bool cutscene1Completed)
-    {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite);
-        var existing = conn.Find<CheckpointRecord>(PlayerId);
-
-        var rec = new CheckpointRecord
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
         {
-            PlayerID = PlayerId,
-            SceneName = SceneManager.GetActiveScene().name,
-            PosX = position.x,
-            PosY = position.y,
-            Cutscene1 = cutscene1Completed,
-            Cutscene2 = existing != null && existing.Cutscene2,
-            Cutscene3 = existing != null && existing.Cutscene3
-        };
+            var rec = conn.Find<CheckpointRecord>(PlayerId)
+                      ?? new CheckpointRecord { PlayerID = PlayerId };
 
-        conn.InsertOrReplace(rec);
-        conn.Close();
+            rec.SceneName = SceneManager.GetActiveScene().name;
+            rec.PosX = position.x;
+            rec.PosY = position.y;
 
-        Debug.Log($"[GameSaveManager] SaveCheckpoint → Scene={rec.SceneName}, Pos=({rec.PosX},{rec.PosY}), Cut1={rec.Cutscene1}");
+            conn.InsertOrReplace(rec);
+        }
+
+        Debug.Log($"[GameSaveManager] SavePlayerPosition → Scene={SceneManager.GetActiveScene().name}, Pos=({position.x}, {position.y})");
     }
 
-    // ===== Удаление чекпоинта (для Новой игры) =====
-    public void DeleteCheckpoint()
-    {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite);
-        conn.Delete<CheckpointRecord>(PlayerId);
-        conn.Close();
-        // Сброс флага обучения
-        SetTutorialCompleted(false);
-        Debug.Log("[GameSaveManager] Checkpoint deleted and tutorial reset");
-    }
-
-    public bool HasCheckpoint()
-    {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly);
-        var exists = conn.Find<CheckpointRecord>(PlayerId) != null;
-        conn.Close();
-        return exists;
-    }
-
-    public string GetSavedScene()
-    {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly);
-        var rec = conn.Find<CheckpointRecord>(PlayerId);
-        conn.Close();
-        return rec != null ? rec.SceneName : string.Empty;
-    }
-
+    /// <summary>
+    /// Возвращает сохранённую позицию игрока (или (0,0), если нет).
+    /// </summary>
     public Vector2 LoadCheckpointPosition()
     {
-        var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly);
-        var rec = conn.Find<CheckpointRecord>(PlayerId);
-        conn.Close();
-        if (rec != null) return new Vector2(rec.PosX, rec.PosY);
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId);
+            if (rec != null)
+                return new Vector2(rec.PosX, rec.PosY);
+        }
         return Vector2.zero;
     }
 
-    public void SetCutscene1Completed(bool value)
+    //=======================================
+    // Флаги катсцены
+    //=======================================
+
+    public void SetCutsceneCompleted(string id)
     {
         var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite);
-        var rec = conn.Find<CheckpointRecord>(PlayerId) ?? new CheckpointRecord { PlayerID = PlayerId };
-
-        rec.Cutscene1 = value;
-        if (string.IsNullOrEmpty(rec.SceneName))
-            rec.SceneName = SceneManager.GetActiveScene().name;
-
+        var rec = conn.Find<CheckpointRecord>(PlayerId)
+               ?? new CheckpointRecord { PlayerID = PlayerId };
+        // разбиваем старый CSV
+        var list = new List<string>();
+        if (!string.IsNullOrEmpty(rec.CompletedCutscenes))
+            list = rec.CompletedCutscenes.Split(',').ToList();
+        // если ещё нет — добавляем
+        if (!list.Contains(id))
+            list.Add(id);
+        rec.CompletedCutscenes = string.Join(",", list);
+        // сохраняем
         conn.InsertOrReplace(rec);
         conn.Close();
-
-        Debug.Log($"[GameSaveManager] SetCutscene1Completed = {value}");
     }
 
-    public bool IsCutscene1Completed()
+    public bool IsCutsceneCompleted(string id)
     {
         var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly);
         var rec = conn.Find<CheckpointRecord>(PlayerId);
         conn.Close();
-        return rec != null && rec.Cutscene1;
+        if (rec == null || string.IsNullOrEmpty(rec.CompletedCutscenes))
+            return false;
+        return rec.CompletedCutscenes.Split(',').Contains(id);
+    }
+
+    //=======================================
+    // Флаги обучения (Tutorial)
+    //=======================================
+
+    /// <summary>
+    /// Устанавливает или сбрасывает флаг, что обучение (tutorial) пройдено.
+    /// </summary>
+    public void SetTutorialCompleted(bool value)
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId)
+                      ?? new CheckpointRecord { PlayerID = PlayerId };
+
+            rec.TutorialCompleted = value;
+            if (string.IsNullOrEmpty(rec.SceneName))
+                rec.SceneName = SceneManager.GetActiveScene().name;
+
+            conn.InsertOrReplace(rec);
+        }
+
+        Debug.Log($"[GameSaveManager] SetTutorialCompleted = {value}");
+    }
+
+    /// <summary>
+    /// Проверяет, было ли пройдено обучение.
+    /// </summary>
+    public bool IsTutorialCompleted()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId);
+            return rec != null && rec.TutorialCompleted;
+        }
+    }
+
+    //=======================================
+    // Общее сохранение / загрузка сцены
+    //=======================================
+
+    /// <summary>
+    /// Есть ли вообще сохранённая запись?
+    /// </summary>
+    public bool HasCheckpoint()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly))
+        {
+            return conn.Find<CheckpointRecord>(PlayerId) != null;
+        }
+    }
+
+    /// <summary>
+    /// Возвращает имя сохранённой сцены (или пустую строку).
+    /// </summary>
+    public string GetSavedScene()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadOnly))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId);
+            return rec != null ? rec.SceneName : "";
+        }
+    }
+
+    /// <summary>
+    /// Полностью удаляет чекпоинт и все флаги.
+    /// </summary>
+    public void DeleteCheckpoint()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
+        {
+            conn.Delete<CheckpointRecord>(PlayerId);
+        }
+        Debug.Log("[GameSaveManager] DeleteCheckpoint");
+    }
+
+    public void ClearAllData()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
+        {
+            // Удаляем все записи о текущем PlayerID
+            conn.Delete<CheckpointRecord>(PlayerId);
+        }
+        Debug.Log("[GameSaveManager] ClearAllData()");
     }
 }

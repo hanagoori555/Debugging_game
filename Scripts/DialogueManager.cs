@@ -86,11 +86,3 @@ public class DialogueManager : MonoBehaviour
         }
     }
 }
-
-[System.Serializable]
-public class DialogueLine
-{
-    public string characterName; // Имя персонажа
-    public Sprite avatar;        // Аватарка персонажа
-    public string text;          // Текст реплики
-}

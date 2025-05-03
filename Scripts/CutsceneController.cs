@@ -1,100 +1,122 @@
 ﻿using UnityEngine;
-using TMPro;
 using UnityEngine.UI;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class CutsceneController : MonoBehaviour
 {
-    [Header("UI элементы катсцены")]
+    [Header("UI")]
     public GameObject cutscenePanel;
     public TextMeshProUGUI dialogueText;
     public TextMeshProUGUI speakerNameText;
     public Image portraitImage;
 
-    [Header("Данные диалога")]
-    public string[] dialogues;
-    public string[] speakerNames;
-    public Sprite[] portraits;
+    [Header("Катсцена ID")]
+    public string cutsceneId;
 
-    [Header("Настройка игрока")]
-    public GameObject player;
+    [Header("Отключать движение игрока?")]
+    public bool disablePlayer = true;
+
     private PlayerController playerController;
+    private DialogueLine[] lines;
+    private int currentIndex;
+    private bool isPlaying;
 
-    private int currentDialogueIndex = 0;
-    private bool isPlaying = false;
-
-    /// <summary>
-    /// Запустить катсцену вручную
-    /// </summary>
-    public void PlayCutscene()
+    void Start()
     {
-        // Если уже пройдена, сразу отключаем и уничтожаем
-        if (GameSaveManager.instance != null && GameSaveManager.instance.IsCutscene1Completed())
+        // 1) Проверяем, что DialogueCatalog инициализирован
+        if (DialogueCatalog.instance == null)
         {
-            cutscenePanel.SetActive(false);
-            Destroy(gameObject);
+            Debug.LogError($"[{nameof(CutsceneController)}] Нет DialogueCatalog.instance в сцене!");
+            enabled = false;
             return;
         }
 
-        // Отключаем управление игроком
-        if (player != null)
+        // 2) Проверяем, что все UI‑поля заполнены
+        if (cutscenePanel == null || dialogueText == null || speakerNameText == null || portraitImage == null)
         {
-            playerController = player.GetComponent<PlayerController>();
-            if (playerController != null)
-                playerController.enabled = false;
+            Debug.LogError($"[{nameof(CutsceneController)}] Не назначены все UI‑элементы в инспекторе!");
+            enabled = false;
+            return;
         }
 
-        // Запускаем katсцену
+        // 3) Отключаем игрока (если нужно)
+        if (disablePlayer)
+        {
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null)
+                playerController = p.GetComponent<PlayerController>();
+        }
+
+        // 4) Загружаем диалоги
+        var (cutLines, interruptAt) = DialogueCatalog.instance.GetCutscene(cutsceneId);
+        if (cutLines == null || cutLines.Length == 0)
+        {
+            Debug.LogWarning($"[{nameof(CutsceneController)}] Катсцена '{cutsceneId}' в сцене '{SceneManager.GetActiveScene().name}' пуста или не найдена.");
+            enabled = false;
+            return;
+        }
+
+        lines = cutLines;
+        PlayCutscene();
+    }
+
+    public void PlayCutscene()
+    {
+        // Проверяем общий флаг пройденности
+        if (GameSaveManager.instance != null && GameSaveManager.instance.IsCutsceneCompleted(cutsceneId))
+        {
+            enabled = false;
+            return;
+        }
+
+        if (disablePlayer && playerController != null)
+            playerController.enabled = false;
+
+        currentIndex = 0;
         isPlaying = true;
         cutscenePanel.SetActive(true);
-        currentDialogueIndex = 0;
-        ShowDialogue();
+        ShowNextLine();
     }
 
     void Update()
     {
         if (!isPlaying) return;
-
         if (Input.GetKeyDown(KeyCode.Space))
+            ShowNextLine();
+    }
+
+    private void ShowNextLine()
+    {
+        // Дополнительно проверяем, что lines не null
+        if (lines == null)
         {
-            currentDialogueIndex++;
-            if (currentDialogueIndex < dialogues.Length)
-            {
-                ShowDialogue();
-            }
-            else
-            {
-                EndCutscene();
-            }
+            EndCutscene();
+            return;
+        }
+
+        if (currentIndex < lines.Length)
+        {
+            var L = lines[currentIndex++];
+            dialogueText.text = L.text;
+            speakerNameText.text = L.characterName;
+            portraitImage.sprite = L.avatar;
+        }
+        else
+        {
+            EndCutscene();
         }
     }
 
-    void ShowDialogue()
-    {
-        dialogueText.text = dialogues[currentDialogueIndex];
-        speakerNameText.text = speakerNameText != null ? speakerNames[currentDialogueIndex] : string.Empty;
-        portraitImage.sprite = portraits[currentDialogueIndex];
-    }
-
-    /// <summary>
-    /// Завершение катсцены
-    /// </summary>
-    public void EndCutscene()
+    private void EndCutscene()
     {
         isPlaying = false;
-
-        if (GameSaveManager.instance != null)
-        {
-            GameSaveManager.instance.SetCutscene1Completed(true);
-            Vector2 pos = player != null
-                ? (Vector2)player.transform.position
-                : Vector2.zero;
-            GameSaveManager.instance.SaveCheckpoint(pos, true);
-        }
-
         cutscenePanel.SetActive(false);
-        if (playerController != null)
+
+        if (disablePlayer && playerController != null)
             playerController.enabled = true;
 
-        Destroy(gameObject);
+        GameSaveManager.instance.SetCutsceneCompleted(cutsceneId);
+        enabled = false;
     }
 }

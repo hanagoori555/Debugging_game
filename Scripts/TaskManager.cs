@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
+[DefaultExecutionOrder(-50)]
 public class TaskManager : MonoBehaviour
 {
     public static TaskManager instance;
@@ -80,6 +81,14 @@ public class TaskManager : MonoBehaviour
         if (tasks == null || tasks.Length == 0)
             return string.Empty;
         return tasks[currentIndex];
+    }
+
+    /// <summary>
+    /// Вернуть индекс текущей задачи (0‑based).
+    /// </summary>
+    public int GetCurrentTaskIndex()
+    {
+        return currentIndex;
     }
 
     private void UpdateTaskUI()

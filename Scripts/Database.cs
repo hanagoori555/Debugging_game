@@ -17,18 +17,3 @@ public static class Database
         connection.Close();
     }
 }
-
-// Модель — будет соответствовать таблице CHECKPOINTS
-public class CheckpointRecord
-{
-    [PrimaryKey]
-    public string PlayerID { get; set; }
-
-    public string SceneName { get; set; }
-    public float PosX { get; set; }
-    public float PosY { get; set; }
-
-    public bool Cutscene1 { get; set; }
-    public bool Cutscene2 { get; set; }
-    public bool Cutscene3 { get; set; }
-}

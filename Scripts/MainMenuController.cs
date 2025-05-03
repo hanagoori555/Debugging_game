@@ -10,12 +10,11 @@ public class MainMenuController : MonoBehaviour
     {
         if (GameSaveManager.instance != null)
         {
-            GameSaveManager.instance.DeleteCheckpoint();
+            GameSaveManager.instance.ClearAllData();
             TaskManager.instance.ResetTasks();
         }
         SceneManager.LoadScene(gameSceneName);
     }
-
 
     public void ContinueGame()
     {

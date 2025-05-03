@@ -1,66 +1,58 @@
 ﻿using UnityEngine;
 
-[System.Serializable]
-public class DialoguePhase
-{
-    [Tooltip("Номер катсцены, после которой этот блок диалога доступен (0 — всегда)")]
-    public int requiredCutscene1;
-
-    [Tooltip("Набор строк диалога для этой фазы")]
-    public DialogueLine[] dialogueLines;
-
-    [Tooltip("Сменить задачу после завершения этого диалога")]
-    public bool advanceTaskOnComplete = false;
-}
-
 public class Interactable : MonoBehaviour
 {
-    [Header("Фазы диалога объекта")]
-    public DialoguePhase[] phases;
+    [Header("ID объекта для поиска диалога в JSON")]
+    [Tooltip("Должен совпадать с полем objectId в вашем JSON для этой сцены")]
+    public string objectId;
 
     private bool isPlayerNearby = false;
 
-    void OnTriggerEnter2D(Collider2D collision)
+    private void Start()
+    {
+        // Проверяем, что DialogueCatalog инициализирован
+        if (DialogueCatalog.instance == null)
+        {
+            Debug.LogError($"[Interactable] DialogueCatalog.instance is null. Убедитесь, что на сцене есть DialogueCatalog.");
+            enabled = false;
+            return;
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Player"))
             isPlayerNearby = true;
     }
 
-    void OnTriggerExit2D(Collider2D collision)
+    private void OnTriggerExit2D(Collider2D collision)
     {
         if (collision.CompareTag("Player"))
             isPlayerNearby = false;
     }
 
-    void Update()
+    private void Update()
     {
+        // Ждём, пока игрок рядом и нажмёт E
         if (!isPlayerNearby || !Input.GetKeyDown(KeyCode.E))
             return;
 
-        // Проверяем, завершена ли первая катсцена
-        bool cut1 = GameSaveManager.instance != null && GameSaveManager.instance.IsCutscene1Completed();
+        // Запрашиваем диалоговые строки у DialogueCatalog по objectId
+        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
 
-        // Выбираем самую подходящую фазу
-        DialoguePhase chosen = null;
-        foreach (var ph in phases)
+        if (lines == null || lines.Length == 0)
         {
-            if (ph.requiredCutscene1 <= (cut1 ? 1 : 0))
-                chosen = ph;
-            else
-                break;
+            Debug.LogWarning($"[Interactable] Для objectId='{objectId}' диалог не найден или пуст.");
+            return;
         }
 
-        if (chosen != null && chosen.dialogueLines != null && chosen.dialogueLines.Length > 0)
-        {
-            DialogueManager.instance.ShowDialogue(chosen.dialogueLines);
+        // Показываем диалог
+        DialogueManager.instance.ShowDialogue(lines);
 
-            // Смена задачи, если требовалось
-            if (chosen.advanceTaskOnComplete)
-                TaskManager.instance?.NextTask();
-        }
-        else
-        {
-            Debug.LogWarning($"[Interactable] У объекта {name} нет активных фаз диалога");
-        }
+        // По окончании диалога можно переключить задачу, если нужно.
+        // Но в этой структуре мы не храним флаг advanceTask в JSON,
+        // поэтому вызываем NextTask() вручную где нужно.
+        // Например:
+        TaskManager.instance.NextTask();
     }
 }

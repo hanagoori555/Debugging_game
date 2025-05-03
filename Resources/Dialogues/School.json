@@ -1,0 +1,38 @@
+{
+  "sceneName": "School",
+  "states": [
+    {
+      "stateId": 0,
+      "interactables": [
+        {
+          "objectId": "Desk",
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Привет! Это тестовый диалог у стола."
+            }
+          ]
+        }
+      ],
+      "cutscenes": [
+        {
+          "cutsceneId": "intro1",
+          "interruptAtLine": -1,
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Это вступительная катсцена."
+            },
+            {
+              "characterName": "С.1110",
+              "avatar": "creator",
+              "text": "Я — Создательница 1110, добро пожаловать."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

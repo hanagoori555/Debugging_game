@@ -212,13 +212,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40ac29c5716255f4bbf75269d60fea11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  phases:
-  - requiredCutscene1: 0
-    dialogueLines:
-    - characterName: "\u042D\u043B\u043E\u0438\u0437\u0430"
-      avatar: {fileID: 0}
-      text: "\u041C\u0430\u0443"
-    advanceTaskOnComplete: 1
+  objectId: Desk
 --- !u!1 &73092465
 GameObject:
   m_ObjectHideFlags: 0
@@ -764,7 +758,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &170376580
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1908,6 +1902,50 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &577404512
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 577404514}
+  - component: {fileID: 577404513}
+  m_Layer: 0
+  m_Name: DialogueCatalog
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &577404513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 577404512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b783b8fbe563a904ab91284500b1ed78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &577404514
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 577404512}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.4523473, y: 1.1294718, z: 0.058174547}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &636829081
 GameObject:
   m_ObjectHideFlags: 0
@@ -2280,13 +2318,8 @@ MonoBehaviour:
   dialogueText: {fileID: 129139559}
   speakerNameText: {fileID: 1032449149}
   portraitImage: {fileID: 290656680}
-  dialogues:
-  - "\u041C\u044F"
-  speakerNames:
-  - "\u0421\u043B\u0438\u0432\u0430"
-  portraits:
-  - {fileID: 21300000, guid: a1e163fae30ba1342adc8dbcde2991bc, type: 3}
-  player: {fileID: 1566137936}
+  cutsceneId: intro1
+  disablePlayer: 1
 --- !u!4 &712644487
 Transform:
   m_ObjectHideFlags: 0
@@ -2987,7 +3020,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 2a47fa020dd94c9488bec5c85520ecc3, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 132946d9f9dc0b540b8f14fb55228797, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -5717,3 +5750,4 @@ SceneRoots:
   - {fileID: 309602155}
   - {fileID: 2002227198}
   - {fileID: 1313102947}
+  - {fileID: 577404514}
