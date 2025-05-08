@@ -1,78 +1,72 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
 
 public class CutsceneController : MonoBehaviour
 {
-    [Header("UI")]
+    [Header("UI элементы катсцены")]
     public GameObject cutscenePanel;
     public TextMeshProUGUI dialogueText;
     public TextMeshProUGUI speakerNameText;
     public Image portraitImage;
 
-    [Header("Катсцена ID")]
-    public string cutsceneId;
-
-    [Header("Отключать движение игрока?")]
+    [Header("Отключать движение игрока во время катсцены")]
     public bool disablePlayer = true;
 
     private PlayerController playerController;
-    private DialogueLine[] lines;
+    private DialogueLine[] lines;    // строки текущей катсцены
     private int currentIndex;
+    private int interruptAt;         // индекс для прерывания
     private bool isPlaying;
+
+    void Awake()
+    {
+        // Отключаем панель заранее
+        if (cutscenePanel != null)
+            cutscenePanel.SetActive(false);
+    }
 
     void Start()
     {
-        // 1) Проверяем, что DialogueCatalog инициализирован
-        if (DialogueCatalog.instance == null)
+        // Проверяем UI и DialogueCatalog
+        if (DialogueCatalog.instance == null ||
+            cutscenePanel == null ||
+            dialogueText == null ||
+            speakerNameText == null ||
+            portraitImage == null)
         {
-            Debug.LogError($"[{nameof(CutsceneController)}] Нет DialogueCatalog.instance в сцене!");
+            Debug.LogError("[CutsceneController] Не все зависимости назначены!");
             enabled = false;
             return;
         }
 
-        // 2) Проверяем, что все UI‑поля заполнены
-        if (cutscenePanel == null || dialogueText == null || speakerNameText == null || portraitImage == null)
-        {
-            Debug.LogError($"[{nameof(CutsceneController)}] Не назначены все UI‑элементы в инспекторе!");
-            enabled = false;
-            return;
-        }
-
-        // 3) Отключаем игрока (если нужно)
+        // Получаем управление игроком (если нужно)
         if (disablePlayer)
         {
             var p = GameObject.FindGameObjectWithTag("Player");
             if (p != null)
                 playerController = p.GetComponent<PlayerController>();
         }
-
-        // 4) Загружаем диалоги
-        var (cutLines, interruptAt) = DialogueCatalog.instance.GetCutscene(cutsceneId);
-        if (cutLines == null || cutLines.Length == 0)
-        {
-            Debug.LogWarning($"[{nameof(CutsceneController)}] Катсцена '{cutsceneId}' в сцене '{SceneManager.GetActiveScene().name}' пуста или не найдена.");
-            enabled = false;
-            return;
-        }
-
-        lines = cutLines;
-        PlayCutscene();
     }
 
-    public void PlayCutscene()
+    /// <summary>
+    /// Запуск катсцены для текущего stateId из DialogueCatalog.
+    /// </summary>
+    public void StartCutsceneForCurrentState()
     {
-        // Проверяем общий флаг пройденности
-        if (GameSaveManager.instance != null && GameSaveManager.instance.IsCutsceneCompleted(cutsceneId))
-        {
-            enabled = false;
-            return;
-        }
+        // Забираем линии и interrupt
+        var tuple = DialogueCatalog.instance.GetCutsceneForCurrentState();
+        lines = tuple.lines;
+        interruptAt = tuple.interruptAt;
 
+        if (lines == null || lines.Length == 0)
+            return;  // ничего не делаем, если нет катсцены
+
+        // Отключаем управление игроком
         if (disablePlayer && playerController != null)
             playerController.enabled = false;
 
+        // Запускаем воспроизведение
         currentIndex = 0;
         isPlaying = true;
         cutscenePanel.SetActive(true);
@@ -82,25 +76,25 @@ public class CutsceneController : MonoBehaviour
     void Update()
     {
         if (!isPlaying) return;
+
         if (Input.GetKeyDown(KeyCode.Space))
             ShowNextLine();
     }
 
     private void ShowNextLine()
     {
-        // Дополнительно проверяем, что lines не null
-        if (lines == null)
-        {
-            EndCutscene();
-            return;
-        }
-
         if (currentIndex < lines.Length)
         {
             var L = lines[currentIndex++];
             dialogueText.text = L.text;
             speakerNameText.text = L.characterName;
             portraitImage.sprite = L.avatar;
+
+            // Прерывание, если нужно
+            if (interruptAt >= 0 && currentIndex == interruptAt)
+            {
+                EndCutscene();
+            }
         }
         else
         {
@@ -116,7 +110,7 @@ public class CutsceneController : MonoBehaviour
         if (disablePlayer && playerController != null)
             playerController.enabled = true;
 
-        GameSaveManager.instance.SetCutsceneCompleted(cutsceneId);
-        enabled = false;
+        // Можно здесь пометить флаг завершённой катсцены, если нужно:
+        // GameSaveManager.instance.SetCutsceneCompleted(DialogueCatalog.instance.CurrentCutsceneId);
     }
 }

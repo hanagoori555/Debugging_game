@@ -10,11 +10,14 @@ public class MainMenuController : MonoBehaviour
     {
         if (GameSaveManager.instance != null)
         {
-            GameSaveManager.instance.ClearAllData();
+            GameSaveManager.instance.ClearAllData();   // сброс всех сохранений
             TaskManager.instance.ResetTasks();
+            // Сбрасываем туториал:
+            GameSaveManager.instance.SetTutorialCompleted(false);
         }
         SceneManager.LoadScene(gameSceneName);
     }
+
 
     public void ContinueGame()
     {

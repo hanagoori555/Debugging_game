@@ -33,6 +33,72 @@
           ]
         }
       ]
+    },
+    {
+      "stateId": 1,
+      "interactables": [
+        {
+          "objectId": "Desk",
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Привет! Это второй диалог у стола."
+            }
+          ]
+        }
+      ],
+      "cutscenes": [
+        {
+          "cutsceneId": "intro2",
+          "interruptAtLine": -1,
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Это дополнительная катсцена."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateId": 2,
+      "interactables": [
+        {
+          "objectId": "Desk",
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Привет! Это третий диалог у стола."
+            }
+          ]
+        },
+        {
+          "objectId": "Desk1",
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta",
+              "text": "Это диалог у второго стола после третьей задачи."
+            }
+          ]
+        }
+      ],
+      "cutscenes": [
+        {
+          "cutsceneId": "thirdScene",
+          "interruptAtLine": -1,
+          "dialogue": [
+            {
+              "characterName": "Розетта",
+              "avatar": "rozetta_happy",
+              "text": "Это катсцена для третьей задачи!"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

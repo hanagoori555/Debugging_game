@@ -185,4 +185,22 @@ public class GameSaveManager : MonoBehaviour
         }
         Debug.Log("[GameSaveManager] ClearAllData()");
     }
+    public void SaveCurrentTask(int index)
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId)
+                      ?? new CheckpointRecord { PlayerID = PlayerId };
+            rec.CurrentTaskIndex = index;
+            conn.InsertOrReplace(rec);
+        }
+    }
+    public int LoadCurrentTask()
+    {
+        using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
+        {
+            var rec = conn.Find<CheckpointRecord>(PlayerId);
+            return rec != null ? rec.CurrentTaskIndex : 0;
+        }
+    }
 }

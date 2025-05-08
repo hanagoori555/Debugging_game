@@ -55,6 +55,8 @@ public class DialogueCatalog : MonoBehaviour
         int stateId = TaskManager.instance.GetCurrentTaskIndex();
         _currentState = _sceneData.states
             .FirstOrDefault(s => s.stateId == stateId);
+        Debug.Log($"[DialogueCatalog] interactables: {string.Join(",", _currentState.interactables.Select(i => i.objectId))}");
+
 
         if (_currentState == null)
         {
@@ -89,4 +91,23 @@ public class DialogueCatalog : MonoBehaviour
             text = d.text
         }).ToArray();
     }
+
+    public string CurrentCutsceneId { get; private set; }
+
+    public (DialogueLine[] lines, int interruptAt) GetCutsceneForCurrentState()
+    {
+        var cd = _currentState?.cutscenes.FirstOrDefault();
+        if (cd == null) return (new DialogueLine[0], -1);
+        CurrentCutsceneId = cd.cutsceneId;
+        return (ConvertLines(cd.dialogue), cd.interruptAtLine);
+    }
+
+    public void RefreshState()
+    {
+        if (_sceneData == null) return;
+        int stateId = TaskManager.instance.GetCurrentTaskIndex();
+        _currentState = _sceneData.states.FirstOrDefault(s => s.stateId == stateId);
+        Debug.Log($"[DialogueCatalog] Refreshed state to {stateId}");
+    }
+
 }

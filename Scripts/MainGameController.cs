@@ -10,28 +10,28 @@ public class MainGameController : MonoBehaviour
 
     void Start()
     {
-        // Показываем туториал только при Новой игре (нет сохранений) и если обучение ещё не проходили
-        if (!GameSaveManager.instance.HasCheckpoint() &&
-            !GameSaveManager.instance.IsTutorialCompleted())
+        bool has = GameSaveManager.instance.HasCheckpoint();
+        bool tut = GameSaveManager.instance.IsTutorialCompleted();
+        Debug.Log($"[MainGameController] HasCheckpoint={has}, TutorialCompleted={tut}");
+        if (!tut)
         {
             tutorialPanel.SetActive(true);
+            return;
         }
-        else
-        {
-            // Иначе сразу стартуем катсцену
-            cutsceneController.PlayCutscene();
-        }
+        TryPlayCutscene();
     }
 
-    /// <summary>
-    /// Привяжите к кнопке "Продолжить" на tutorialPanel
-    /// </summary>
+
     public void EndTutorial()
     {
         tutorialPanel.SetActive(false);
         GameSaveManager.instance.SetTutorialCompleted(true);
+        TryPlayCutscene();
+    }
 
-        // Запускаем катсцену после обучения
-        cutsceneController.PlayCutscene();
+    private void TryPlayCutscene()
+    {
+        if (TaskManager.instance.ShouldPlayCutscene())
+            cutsceneController.StartCutsceneForCurrentState();
     }
 }

@@ -8,7 +8,8 @@ public class TaskManager : MonoBehaviour
 
     [Header("Список игровых задач (будут показываться по порядку)")]
     public string[] tasks;
-
+    [Header("Нужна ли катсцена для задачи")]
+    public bool[] playCutsceneForTask;  // строго такой же размер, как tasks
     [Header("Ссылка на UIManager для обновления текста задачи")]
     private UIManager uiManager;
 
@@ -49,28 +50,46 @@ public class TaskManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    public bool ShouldPlayCutscene()
+    => playCutsceneForTask != null
+       && currentIndex < playCutsceneForTask.Length
+       && playCutsceneForTask[currentIndex];
+
     /// <summary>
-    /// Переключиться на следующую задачу (если есть)
+    /// Переключиться на следующую задачу (если есть) и запустить катсцену по флагу.
     /// </summary>
     public void NextTask()
     {
-        if (tasks == null || tasks.Length == 0)
-            return;
+        // 1) Увеличиваем индекс
         currentIndex = Mathf.Min(currentIndex + 1, tasks.Length - 1);
+
+        // 2) Сохраняем прогресс
+        GameSaveManager.instance.SaveCurrentTask(currentIndex);
+
+        // 3) Обновляем UI
         UpdateTaskUI();
-        Debug.Log($"[TaskManager] Переключили на индекс {currentIndex}");
+
+        // 4) При каждом переходе обновляем состояние DialogueCatalog
+        DialogueCatalog.instance.RefreshState();
+
+        // 5) Если для новой задачи нужна катсцена — запускаем её
+        if (ShouldPlayCutscene())
+        {
+            var controller = FindObjectOfType<CutsceneController>();
+            if (controller != null)
+                controller.StartCutsceneForCurrentState();
+        }
     }
 
     /// <summary>
-    /// Сбросить задачи (для начала новой игры)
+    /// Сброс всех задач (для новой игры)
     /// </summary>
     public void ResetTasks()
     {
-        if (tasks == null || tasks.Length == 0)
-            return;
         currentIndex = 0;
+        GameSaveManager.instance.SaveCurrentTask(0);
         UpdateTaskUI();
-        Debug.Log("[TaskManager] Задачи сброшены");
+        DialogueCatalog.instance.RefreshState();
     }
 
     /// <summary>
@@ -83,17 +102,12 @@ public class TaskManager : MonoBehaviour
         return tasks[currentIndex];
     }
 
-    /// <summary>
-    /// Вернуть индекс текущей задачи (0‑based).
-    /// </summary>
-    public int GetCurrentTaskIndex()
-    {
-        return currentIndex;
-    }
-
     private void UpdateTaskUI()
     {
         if (uiManager != null)
             uiManager.SetTask(GetCurrentTask());
     }
+
+    // И геттер
+    public int GetCurrentTaskIndex() => currentIndex;
 }

@@ -13,4 +13,6 @@ public class CheckpointRecord
     // новое поле: запишем ID пройденных катсцен через запятую
     public string CompletedCutscenes { get; set; }
     public bool TutorialCompleted { get; set; }
+
+    public int CurrentTaskIndex;
 }
