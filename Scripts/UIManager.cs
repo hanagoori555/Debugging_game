@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
+    public static UIManager instance;     // <-- 1) singleton-поле
+
     [Header("Панель паузы (может быть активирована)")]
     public GameObject pauseMenuPanel; // панель с кнопками Resume/Exit
 
@@ -14,6 +16,24 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI taskText;
 
     private bool isPaused = false;
+    void Awake()
+    {
+        // <-- 2) и 3) проверка и DontDestroyOnLoad
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        // (Опционально) сразу выключить панель
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(false);
+    }
 
     void Start()
     {

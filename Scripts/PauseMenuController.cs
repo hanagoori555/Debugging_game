@@ -3,6 +3,12 @@ using UnityEngine.SceneManagement;
 
 public class PauseMenuController : MonoBehaviour
 {
+    void Awake()
+    {
+        // Помечаем этот объект (и всё его содержимое) как "не уничтожать при загрузке сцены"
+        DontDestroyOnLoad(gameObject);
+    }
+
     public GameObject pauseMenuPanel;
 
     void Update()

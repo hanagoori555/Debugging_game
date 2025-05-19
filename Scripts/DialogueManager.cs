@@ -1,45 +1,52 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 public class DialogueManager : MonoBehaviour
 {
     public static DialogueManager instance;
 
-    public GameObject dialogueBox;      // Панель диалога
-    public TMPro.TextMeshProUGUI dialogueText; // Текст реплики
-    public TMPro.TextMeshProUGUI characterNameText; // Текст имени персонажа
-    public Image characterAvatarImage; // Изображение для аватарки
+    public GameObject dialogueBox;
+    public TMPro.TextMeshProUGUI dialogueText;
+    public TMPro.TextMeshProUGUI characterNameText;
+    public Image characterAvatarImage;
 
     private DialogueLine[] dialogueLines;
     private int currentLineIndex;
+    private Action onCompleteCallback;  // <-- колбэк на завершение
 
     private void Awake()
     {
+        // singleton + dont destroy
         if (instance == null)
         {
             instance = this;
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
+            return;
         }
 
-        // Отключаем все элементы интерфейса
+        // инициализация UI
         dialogueBox.SetActive(false);
         dialogueText.text = "";
         characterNameText.text = "";
-        characterAvatarImage.sprite = null;
-        characterAvatarImage.enabled = false; // Отключаем рендер аватарки
+        characterAvatarImage.enabled = false;
     }
 
-    public void ShowDialogue(DialogueLine[] lines)
+    /// <summary>
+    /// Запускает диалог и вызывает onComplete после EndDialogue()
+    /// </summary>
+    public void ShowDialogue(DialogueLine[] lines, Action onComplete = null)
     {
+        Debug.Log($"[DialogueManager] ShowDialogue called with {lines.Length} lines");
         dialogueLines = lines;
         currentLineIndex = 0;
+        onCompleteCallback = onComplete;     // сохраняем колбэк
 
         characterAvatarImage.enabled = true;
-
-        // Включаем панель и текст
         dialogueBox.SetActive(true);
         dialogueText.gameObject.SetActive(true);
 
@@ -50,14 +57,10 @@ public class DialogueManager : MonoBehaviour
     {
         if (currentLineIndex < dialogueLines.Length)
         {
-            DialogueLine currentLine = dialogueLines[currentLineIndex];
-
-            // Устанавливаем текст реплики, имя и аватарку
-            dialogueText.text = currentLine.text;
-            characterNameText.text = currentLine.characterName;
-            characterAvatarImage.sprite = currentLine.avatar;
-
-            currentLineIndex++;
+            var line = dialogueLines[currentLineIndex++];
+            dialogueText.text = line.text;
+            characterNameText.text = line.characterName;
+            characterAvatarImage.sprite = line.avatar;
         }
         else
         {
@@ -67,12 +70,16 @@ public class DialogueManager : MonoBehaviour
 
     public void EndDialogue()
     {
-        // Скрываем панель, текст, имя и аватарку
+        Debug.Log("[DialogueManager] EndDialogue called");
         dialogueBox.SetActive(false);
         dialogueText.gameObject.SetActive(false);
         characterNameText.text = "";
         characterAvatarImage.sprite = null;
         characterAvatarImage.enabled = false;
+
+        // вызываем колбэк после закрытия последней строки
+        onCompleteCallback?.Invoke();
+        onCompleteCallback = null;
 
         dialogueLines = null;
         currentLineIndex = 0;
@@ -80,9 +87,8 @@ public class DialogueManager : MonoBehaviour
 
     private void Update()
     {
+        if (dialogueBox == null) { enabled = false; return; }
         if (dialogueBox.activeSelf && Input.GetKeyDown(KeyCode.Space))
-        {
             DisplayNextLine();
-        }
     }
 }

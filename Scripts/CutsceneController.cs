@@ -4,6 +4,8 @@ using TMPro;
 
 public class CutsceneController : MonoBehaviour
 {
+    public static CutsceneController instance;   // <-- singleton
+
     [Header("UI элементы катсцены")]
     public GameObject cutscenePanel;
     public TextMeshProUGUI dialogueText;
@@ -21,7 +23,19 @@ public class CutsceneController : MonoBehaviour
 
     void Awake()
     {
-        // Отключаем панель заранее
+        // singleton + don’t destroy
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        // сразу спрячем панель
         if (cutscenePanel != null)
             cutscenePanel.SetActive(false);
     }
@@ -54,13 +68,16 @@ public class CutsceneController : MonoBehaviour
     /// </summary>
     public void StartCutsceneForCurrentState()
     {
-        // Забираем линии и interrupt
+        Debug.Log($"[CutsceneController] StartCutsceneForCurrentState() called. disablePlayer={disablePlayer}");
         var tuple = DialogueCatalog.instance.GetCutsceneForCurrentState();
         lines = tuple.lines;
         interruptAt = tuple.interruptAt;
-
+        Debug.Log($"[CutsceneController] Loaded {lines.Length} lines, interruptAt={interruptAt}");
         if (lines == null || lines.Length == 0)
-            return;  // ничего не делаем, если нет катсцены
+        {
+            Debug.LogWarning("[CutsceneController] No lines, skipping.");
+            return;
+        }
 
         // Отключаем управление игроком
         if (disablePlayer && playerController != null)
@@ -76,7 +93,7 @@ public class CutsceneController : MonoBehaviour
     void Update()
     {
         if (!isPlaying) return;
-
+        if (dialogueText == null) return;  // <— защита от destroyed
         if (Input.GetKeyDown(KeyCode.Space))
             ShowNextLine();
     }

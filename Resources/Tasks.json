@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "id": 0,
+      "description": "Подойти к Элоизе",
+      "triggerType": "Interact",
+      "triggerParam": "EloisaSit1",
+      "hasCutscene": false
+    },
+    {
+      "id": 1,
+      "description": "Поговорить с Desk1",
+      "triggerType": "Interact",
+      "triggerParam": "Desk1",
+      "hasCutscene": true
+    },
+    {
+      "id": 2,
+      "description": "Выйти из школы",
+      "triggerType": "SceneExit",
+      "triggerParam": "Forest",
+      "hasCutscene": true
+    }
+  ]
+}

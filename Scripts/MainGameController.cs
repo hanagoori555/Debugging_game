@@ -5,9 +5,6 @@ public class MainGameController : MonoBehaviour
     [Header("UI Экран обучения")]
     public GameObject tutorialPanel;
 
-    [Header("Контроллер катсцены")]
-    public CutsceneController cutsceneController;
-
     void Start()
     {
         bool has = GameSaveManager.instance.HasCheckpoint();
@@ -18,7 +15,6 @@ public class MainGameController : MonoBehaviour
             tutorialPanel.SetActive(true);
             return;
         }
-        TryPlayCutscene();
     }
 
 
@@ -26,12 +22,5 @@ public class MainGameController : MonoBehaviour
     {
         tutorialPanel.SetActive(false);
         GameSaveManager.instance.SetTutorialCompleted(true);
-        TryPlayCutscene();
-    }
-
-    private void TryPlayCutscene()
-    {
-        if (TaskManager.instance.ShouldPlayCutscene())
-            cutsceneController.StartCutsceneForCurrentState();
     }
 }

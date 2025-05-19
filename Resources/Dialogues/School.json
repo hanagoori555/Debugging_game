@@ -5,7 +5,7 @@
       "stateId": 0,
       "interactables": [
         {
-          "objectId": "Desk",
+          "objectId": "EloisaSit1",
           "dialogue": [
             {
               "characterName": "Розетта",
@@ -17,7 +17,7 @@
       ],
       "cutscenes": [
         {
-          "cutsceneId": "intro1",
+          "cutsceneId": "0",
           "interruptAtLine": -1,
           "dialogue": [
             {
@@ -38,7 +38,7 @@
       "stateId": 1,
       "interactables": [
         {
-          "objectId": "Desk",
+          "objectId": "Desk1",
           "dialogue": [
             {
               "characterName": "Розетта",
@@ -50,7 +50,7 @@
       ],
       "cutscenes": [
         {
-          "cutsceneId": "intro2",
+          "cutsceneId": "1",
           "interruptAtLine": -1,
           "dialogue": [
             {
@@ -88,7 +88,7 @@
       ],
       "cutscenes": [
         {
-          "cutsceneId": "thirdScene",
+          "cutsceneId": "2",
           "interruptAtLine": -1,
           "dialogue": [
             {

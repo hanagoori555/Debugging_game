@@ -1,12 +1,15 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class Interactable : MonoBehaviour
 {
+    // 1) Статическое событие, которое выдают все интерактивные объекты
+    public static event Action<string> OnAnyInteract;
+
     [Header("ID объекта (в JSON)")]
     public string objectId;
 
     private bool isPlayerNearby;
-    private bool hasTriggered = false;
 
     void OnTriggerEnter2D(Collider2D c)
         => isPlayerNearby = c.CompareTag("Player");
@@ -19,19 +22,10 @@ public class Interactable : MonoBehaviour
         if (!isPlayerNearby || !Input.GetKeyDown(KeyCode.E))
             return;
 
-        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
-        if (lines == null || lines.Length == 0)
+        // гарантируем, что это нужный объект
+        if (string.IsNullOrEmpty(objectId))
             return;
 
-        // Показываем всегда
-        DialogueManager.instance.ShowDialogue(lines);
-
-        // Меняем задачу лишь один раз
-        if (!hasTriggered)
-        {
-            TaskManager.instance.NextTask();
-            DialogueCatalog.instance.RefreshState();
-            hasTriggered = true;
-        }
+        OnAnyInteract?.Invoke(objectId);
     }
 }
