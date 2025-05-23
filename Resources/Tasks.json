@@ -5,21 +5,21 @@
       "description": "Подойти к Элоизе",
       "triggerType": "Interact",
       "triggerParam": "EloisaSit1",
-      "hasCutscene": false
+      "hasCutscene": true
     },
     {
       "id": 1,
-      "description": "Поговорить с Desk1",
-      "triggerType": "Interact",
-      "triggerParam": "Desk1",
-      "hasCutscene": true
-    },
-    {
-      "id": 2,
       "description": "Выйти из школы",
       "triggerType": "SceneExit",
       "triggerParam": "Forest",
-      "hasCutscene": true
+      "hasCutscene": false
+    },
+    {
+      "id": 2,
+      "description": "Пойти домой",
+      "triggerType": "SceneExit",
+      "triggerParam": "Home",
+      "hasCutscene": false
     }
   ]
 }

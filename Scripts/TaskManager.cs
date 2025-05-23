@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using UnityEditor.U2D.Aseprite;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -37,6 +38,7 @@ public class TaskManager : MonoBehaviour
         // обновляем UIManager и UI
         uiManager = FindObjectOfType<UIManager>();
         UpdateTaskUI();
+        SubscribeToCurrentTrigger();  // чтобы Auto-триггер стал активен
     }
 
     void Start()
@@ -76,6 +78,41 @@ public class TaskManager : MonoBehaviour
                 Debug.Log($"[TaskManager] Subscribing to SceneExit '{task.triggerParam}'");
                 SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
                 break;
+            case "Auto":
+                // сразу после загрузки сцены
+                StartCoroutine(AutoTriggerCoroutine(task));
+                break;
+        }
+    }
+
+    private IEnumerator AutoTriggerCoroutine(TaskData task)
+    {
+        // ждём одного кадра, чтобы всё успело инициализироваться
+        yield return null;
+
+        // если для этой задачи нужна катсцена — запустим её
+        if (task.hasCutscene)
+        {
+            var ctrl = FindObjectOfType<CutsceneController>();
+            ctrl?.StartCutsceneForCurrentState();
+            // ждём, пока катсцена допроиграется (если у вас есть callback — можно ждать)
+            yield return new WaitForSeconds( /*длительность вашей катсцены*/ 2f);
+        }
+
+        // затем берём диалоги по objectId
+        var lines = DialogueCatalog.instance.GetInteractableLines(task.triggerParam);
+        if (lines != null && lines.Length > 0)
+        {
+            // показываем диалог и после него переключаем задачу
+            DialogueManager.instance.ShowDialogue(lines, () =>
+            {
+                NextTask();
+            });
+        }
+        else
+        {
+            // если диалогов нет — сразу к следующей задаче
+            NextTask();
         }
     }
 

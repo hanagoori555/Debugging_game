@@ -8,109 +8,110 @@ public class RhythmNote : MonoBehaviour
     private KeyCode key;
     public float fallSpeed = 5f;
 
-    private SpriteRenderer sr;
-    private BoxCollider2D col;
-
     private bool canBeHit = false;
-    private bool isHolding = false;
-    private float holdTime = 0f;
     private bool successfulHit = false;
+    private float holdTime = 0f;
 
-    /// <summary>
-    /// Инициализирует ноту перед спавном: задаёт дорожку, длительность и привязанную клавишу.
-    /// </summary>
+    // Для затемнения
+    private SpriteRenderer _sr;
+    private Color _originalColor;
+
+    /// <summary>Инициализация перед спавном</summary>
     public void Initialize(int lane, float duration, KeyCode key)
     {
         this.laneIndex = lane;
         this.duration = duration;
         this.key = key;
+
+        // визуальная высота
+        float h = (duration > 0f) ? duration * 3f : 1f;
+        transform.localScale = new Vector3(1f, h, 1f);
     }
 
-    private void Start()
+    void Start()
     {
-        sr = GetComponent<SpriteRenderer>();
-        col = GetComponent<BoxCollider2D>();
-
-        if (sr != null)
-            sr.drawMode = SpriteDrawMode.Tiled;
-
-        // Устанавливаем масштаб коллайдера и спрайта по длительности
-        SetNoteLength(duration);
+        _sr = GetComponent<SpriteRenderer>();
+        if (_sr != null)
+            _originalColor = _sr.color;
     }
 
-    private void Update()
+    void Update()
     {
         // Падение ноты
-        transform.position += Vector3.down * fallSpeed * Time.deltaTime;
+        transform.Translate(Vector3.down * fallSpeed * Time.deltaTime, Space.World);
 
-        // Если нота упала слишком низко — уничтожаем
-        if (transform.position.y < -10f)
+        // Короткая нота промах
+        if (!successfulHit && duration <= 0f && transform.position.y < -10f)
+        {
+            RhythmGameManager.instance?.RegisterMiss();
             Destroy(gameObject);
+        }
     }
 
-    private void LateUpdate()
+    void LateUpdate()
     {
-        if (!canBeHit) return;
+        if (!canBeHit || successfulHit) return;
 
-        // Короткая нота
+        // --- Короткая нота ---
         if (duration <= 0f)
         {
             if (Input.GetKeyDown(key))
+            {
+                successfulHit = true;
+                RhythmGameManager.instance?.RegisterHit();
                 Destroy(gameObject);
+            }
+            return;
         }
-        else // Длинная нота
+
+        // --- Длинная нота ---
+        // Начало удержания
+        if (Input.GetKeyDown(key) && canBeHit)
         {
-            if (Input.GetKeyDown(key))
-            {
-                isHolding = true;
-                holdTime = 0f;
-                if (sr != null) sr.color = Color.green;
-            }
+            holdTime = 0f;
+            if (_sr != null)
+                // делаем полупрозрачной
+                _sr.color = new Color(_originalColor.r, _originalColor.g, _originalColor.b, 0.5f);
+        }
 
-            if (isHolding && Input.GetKey(key))
+        // Удержание
+        if (Input.GetKey(key) && canBeHit)
+        {
+            holdTime += Time.deltaTime;
+            if (holdTime >= duration && !successfulHit)
             {
-                holdTime += Time.deltaTime;
-                if (holdTime >= duration && !successfulHit)
-                {
-                    successfulHit = true;
-                    Destroy(gameObject);
-                }
+                successfulHit = true;
+                // восстанавливаем цвет
+                if (_sr != null)
+                    _sr.color = _originalColor;
+                RhythmGameManager.instance?.RegisterHit();
+                Destroy(gameObject);
             }
+        }
 
-            if (Input.GetKeyUp(key))
-            {
-                if (isHolding && holdTime < duration)
-                    Destroy(gameObject);
-                isHolding = false;
-                if (sr != null) sr.color = Color.white;
-            }
+        // Отпускание раньше срока
+        if (Input.GetKeyUp(key))
+        {
+            if (!successfulHit)
+                RhythmGameManager.instance?.RegisterMiss();
+
+            // сбросим цвет
+            if (_sr != null)
+                _sr.color = _originalColor;
+
+            Destroy(gameObject);
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    void OnTriggerEnter2D(Collider2D c)
     {
-        if (other.CompareTag("HitZone"))
+        if (c.CompareTag("HitZone"))
             canBeHit = true;
     }
 
-    private void OnTriggerExit2D(Collider2D other)
+    void OnTriggerExit2D(Collider2D c)
     {
-        if (other.CompareTag("HitZone") && duration <= 0f)
-            Destroy(gameObject);
-    }
-
-    /// <summary>
-    /// Меняет размер и коллайдер ноты в зависимости от её длительности.
-    /// </summary>
-    private void SetNoteLength(float dur)
-    {
-        float height = dur > 0f ? dur * 2.5f : 1f;
-        if (sr != null)
-            sr.size = new Vector2(sr.size.x, height);
-        if (col != null)
-        {
-            col.size = new Vector2(col.size.x, height);
-            col.offset = new Vector2(col.offset.x, height / 2f);
-        }
+        if (c.CompareTag("HitZone") && duration > 0f)
+            canBeHit = false;
     }
 }
