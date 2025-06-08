@@ -8,6 +8,11 @@ public class MainMenuController : MonoBehaviour
 
     public void NewGame()
     {
+        // Сбрасываем паузу и скрываем панель
+        Time.timeScale = 1f;
+        if (UIManager.instance != null)
+            UIManager.instance.HidePauseMenu();
+
         if (GameSaveManager.instance != null)
         {
             GameSaveManager.instance.ClearAllData();   // сброс всех сохранений
@@ -15,14 +20,22 @@ public class MainMenuController : MonoBehaviour
             // Сбрасываем туториал:
             GameSaveManager.instance.SetTutorialCompleted(false);
         }
+
         SceneManager.LoadScene(gameSceneName);
     }
 
-
     public void ContinueGame()
     {
+        Debug.Log("ContinueGame() pressed");
+
+        // Сбрасываем паузу и скрываем панель
+        Time.timeScale = 1f;
+        if (UIManager.instance != null)
+            UIManager.instance.HidePauseMenu();
+
         if (GameSaveManager.instance != null && GameSaveManager.instance.HasCheckpoint())
         {
+            Debug.Log("  → Has checkpoint, loading saved game");
             string scene = GameSaveManager.instance.GetSavedScene();
             if (string.IsNullOrEmpty(scene))
             {
@@ -34,7 +47,11 @@ public class MainMenuController : MonoBehaviour
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneManager.LoadScene(scene);
         }
-        else NewGame();
+        else
+        {
+            Debug.Log("  → No checkpoint, falling back to NewGame()");
+            NewGame();
+        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -47,6 +64,11 @@ public class MainMenuController : MonoBehaviour
 
     public void ExitGame()
     {
-        Application.Quit();
+        // Перед выходом из игры тоже сбросим паузу
+        Time.timeScale = 1f;
+        if (UIManager.instance != null)
+            UIManager.instance.HidePauseMenu();
+        UnityEditor.EditorApplication.isPlaying = false;
+        //Application.Quit();
     }
 }

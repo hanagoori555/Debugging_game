@@ -1,0 +1,38 @@
+{
+  "sceneName": "ComputerScene",
+  "states": [
+    {
+      "stateId": 7,
+      "interactables": [],
+      "autoDialogs": [],
+      "cutscenes": [
+        {
+          "cutsceneId": "7",
+          "interruptAtLine": 2,
+          "dialogue": [
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Ты хочешь войти в консоль?"
+            },
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Введите команду, чтобы продолжить..."
+            },
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Спасибо, команда правильная! Продолжаем..."
+            },
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "…и завершаем катсцену."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -31,6 +31,7 @@ public class DialogueCatalog : MonoBehaviour
     public void ReloadForActiveScene()
     {
         _sceneData = DialogueLoader.LoadSceneData(SceneManager.GetActiveScene().name);
+
         if (_sceneData == null)
         {
             Debug.LogWarning($"[DialogueCatalog] No dialogue data for scene {SceneManager.GetActiveScene().name}");
@@ -38,16 +39,16 @@ public class DialogueCatalog : MonoBehaviour
             return;
         }
 
-        // Защита: убедимся, что TaskManager.instance и _sceneData.states не null
         if (TaskManager.instance == null)
         {
-            Debug.LogError("[DialogueCatalog] TaskManager.instance is null – не загружен ли TaskManager?");
+            Debug.LogError("[DialogueCatalog] TaskManager.instance is null");
             _currentState = null;
             return;
         }
+
         if (_sceneData.states == null)
         {
-            Debug.LogError($"[DialogueCatalog] _sceneData.states is null для сцены {_sceneData.sceneName}");
+            Debug.LogError($"[DialogueCatalog] _sceneData.states is null for scene {_sceneData.sceneName}");
             _currentState = null;
             return;
         }
@@ -55,15 +56,18 @@ public class DialogueCatalog : MonoBehaviour
         int stateId = TaskManager.instance.GetCurrentTaskIndex();
         _currentState = _sceneData.states
             .FirstOrDefault(s => s.stateId == stateId);
-        Debug.Log($"[DialogueCatalog] interactables: {string.Join(",", _currentState.interactables.Select(i => i.objectId))}");
-        Debug.Log($"[DialogueCatalog] cutscenes: {string.Join(",", _currentState.cutscenes.Select(c => c.cutsceneId))}");
 
         if (_currentState == null)
         {
             Debug.LogWarning($"[DialogueCatalog] No state {stateId} in scene {_sceneData.sceneName}");
+            return;
         }
-    }
 
+        Debug.Log($"[DialogueCatalog] ReloadForActiveScene: Loaded state {stateId} for scene {_sceneData.sceneName}");
+        Debug.Log($"[DialogueCatalog] interactables: {string.Join(",", _currentState.interactables.Select(i => i.objectId))}");
+        Debug.Log($"[DialogueCatalog] autoDialogs count: {_currentState.autoDialogs?.Length ?? 0}");
+        Debug.Log($"[DialogueCatalog] cutscenes: {string.Join(",", _currentState.cutscenes.Select(c => c.cutsceneId))}");
+    }
 
     public DialogueLine[] GetInteractableLines(string objectId)
     {
@@ -75,10 +79,22 @@ public class DialogueCatalog : MonoBehaviour
             Debug.LogWarning($"[DialogueCatalog]  → Не найден объект с ID='{objectId}'");
             return new DialogueLine[0];
         }
+
         Debug.Log($"[DialogueCatalog]  → Найдены {entry.dialogue.Length} строк(а) для '{objectId}'");
         return ConvertLines(entry.dialogue);
     }
 
+    public DialogueLine[] GetAutoDialogueForCurrentState()
+    {
+        if (_currentState?.autoDialogs == null) return new DialogueLine[0];
+        return _currentState.autoDialogs.Select(d => new DialogueLine
+        {
+            characterName = d.characterName,
+            avatar = string.IsNullOrEmpty(d.avatar) ? null : Resources.Load<Sprite>($"Portraits/{d.avatar}"),
+            text = d.text,
+            background = string.IsNullOrEmpty(d.backgroundImage) ? null : Resources.Load<Sprite>($"Backgrounds/{d.backgroundImage}")
+        }).ToArray();
+    }
 
     public (DialogueLine[] lines, int interruptAt) GetCutscene(string cutsceneId)
     {
@@ -93,8 +109,11 @@ public class DialogueCatalog : MonoBehaviour
         return arr.Select(d => new DialogueLine
         {
             characterName = d.characterName,
-            avatar = Resources.Load<Sprite>($"Sprites/Portraits/{d.avatar}"),
-            text = d.text
+            avatar = string.IsNullOrEmpty(d.avatar) ? null : Resources.Load<Sprite>($"Portraits/{d.avatar}"),
+            text = d.text,
+            background = string.IsNullOrEmpty(d.backgroundImage)
+                        ? null
+                        : Resources.Load<Sprite>($"Backgrounds/{d.backgroundImage}")
         }).ToArray();
     }
 
@@ -102,42 +121,39 @@ public class DialogueCatalog : MonoBehaviour
 
     public (DialogueLine[] lines, int interruptAt) GetCutsceneForCurrentState()
     {
-        // Узнаём, какой state сейчас
-        Debug.Log($"[DialogueCatalog] GetCutsceneForCurrentState: currentStateId={_currentState?.stateId}");
-
-        // Выводим все доступные cutsceneId в этом state
-        if (_currentState?.cutscenes != null)
+        if (_currentState == null)
         {
-            Debug.Log($"[DialogueCatalog]  Available cutscenes count={_currentState.cutscenes.Length}");
-            foreach (var candidate in _currentState.cutscenes)
-            {
-                Debug.Log($"[DialogueCatalog]   candidate.cutsceneId='{candidate.cutsceneId}', dialogueLines={candidate.dialogue?.Length}");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[DialogueCatalog]  No cutscenes array on current state");
-        }
-
-        // выбор по id задачи или по triggerParam
-        var task = TaskManager.instance.GetCurrentTaskData();
-        Debug.Log($"[DialogueCatalog]  Looking for cutscene where cutsceneId == '{task.id}' or '{task.triggerParam}'");
-        var cd = _currentState?.cutscenes
-                     .FirstOrDefault(c => c.cutsceneId == task.id.ToString()
-                                       || c.cutsceneId == task.triggerParam);
-
-        // Логируем результат поиска
-        if (cd == null)
-        {
-            Debug.LogWarning($"[DialogueCatalog]  → No matching cutscene found for state={_currentState.stateId}");
+            Debug.LogWarning("[DialogueCatalog] GetCutsceneForCurrentState called but _currentState is null");
             return (new DialogueLine[0], -1);
         }
-        Debug.Log($"[DialogueCatalog]  → Selected cutsceneId='{cd.cutsceneId}' with {cd.dialogue.Length} lines");
+
+        Debug.Log($"[DialogueCatalog] GetCutsceneForCurrentState: currentStateId={_currentState.stateId}");
+
+        if (_currentState.cutscenes == null || _currentState.cutscenes.Length == 0)
+        {
+            Debug.LogWarning("[DialogueCatalog] No cutscenes in current state");
+            return (new DialogueLine[0], -1);
+        }
+
+        int taskId = TaskManager.instance.GetCurrentTaskIndex();
+        var cd = _currentState.cutscenes.FirstOrDefault(c => c.cutsceneId == taskId.ToString());
+
+        if (cd == null)
+        {
+            Debug.LogWarning($"[DialogueCatalog] No cutscene matching taskId={taskId}. Using first available.");
+            cd = _currentState.cutscenes.FirstOrDefault();
+        }
+
+        if (cd == null)
+        {
+            Debug.LogWarning("[DialogueCatalog] No cutscenes found at all for current state");
+            return (new DialogueLine[0], -1);
+        }
+
+        Debug.Log($"[DialogueCatalog] Selected cutsceneId='{cd.cutsceneId}' with {cd.dialogue.Length} lines");
         CurrentCutsceneId = cd.cutsceneId;
         return (ConvertLines(cd.dialogue), cd.interruptAtLine);
     }
-
-
 
     public void RefreshState()
     {
@@ -146,5 +162,4 @@ public class DialogueCatalog : MonoBehaviour
         _currentState = _sceneData.states.FirstOrDefault(s => s.stateId == stateId);
         Debug.Log($"[DialogueCatalog] Refreshed state to {stateId}");
     }
-
 }

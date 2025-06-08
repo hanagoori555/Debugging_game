@@ -55,12 +55,24 @@ public class DialogueManager : MonoBehaviour
 
     public void DisplayNextLine()
     {
+        if (dialogueLines == null || dialogueLines.Length == 0)
+            return;
+
         if (currentLineIndex < dialogueLines.Length)
         {
             var line = dialogueLines[currentLineIndex++];
             dialogueText.text = line.text;
             characterNameText.text = line.characterName;
-            characterAvatarImage.sprite = line.avatar;
+            // вот здесь — отключаем аватар, если спрайта нет
+            if (line.avatar != null)
+            {
+                characterAvatarImage.enabled = true;
+                characterAvatarImage.sprite = line.avatar;
+            }
+            else
+            {
+                characterAvatarImage.enabled = false;
+            }
         }
         else
         {
@@ -78,6 +90,8 @@ public class DialogueManager : MonoBehaviour
         characterAvatarImage.enabled = false;
 
         // вызываем колбэк после закрытия последней строки
+
+        Debug.Log($"[DialogueManager] Диалог завершён, вызываем колбэк.");
         onCompleteCallback?.Invoke();
         onCompleteCallback = null;
 

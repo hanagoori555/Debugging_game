@@ -53,12 +53,27 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Вызвать из кода, чтобы обновить текст задачи
+    /// Вызывается из TaskManager для обновления текста задачи.
+    /// Если task == null или пустая строка, скрываем taskText.
     /// </summary>
     public void SetTask(string task)
     {
-        if (taskText != null)
+        if (taskText == null)
+        {
+            Debug.LogWarning("[UIManager] Поле taskText не назначено в Inspector!");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(task))
+        {
+            // Если описание пустое, скрываем текстовую строку
+            taskText.gameObject.SetActive(false);
+        }
+        else
+        {
+            taskText.gameObject.SetActive(true);
             taskText.text = "Задача: " + task;
+        }
     }
 
     /// <summary>
@@ -66,9 +81,20 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void GoToMainMenu()
     {
-        // Снимаем паузу
+        // Снимаем паузу и прячем панель
+        isPaused = false;
         Time.timeScale = 1f;
         // Загружаем сцену главного меню
         SceneManager.LoadScene("MainMenu");
+    }
+
+    /// <summary>
+    /// Скрывает панель паузы (без изменения Time.timeScale).
+    /// </summary>
+    public void HidePauseMenu()
+    {
+        isPaused = false;
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(false);
     }
 }

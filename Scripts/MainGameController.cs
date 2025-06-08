@@ -1,26 +1,35 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class MainGameController : MonoBehaviour
 {
-    [Header("UI Экран обучения")]
-    public GameObject tutorialPanel;
+    [Header("Tutorial Settings")]
+    [SerializeField] private GameObject tutorialPanel;
+    [SerializeField] private Image tutorialImage;
+    [SerializeField] private Button closeButton;
 
-    void Start()
+    public void StartTutorial()
     {
-        bool has = GameSaveManager.instance.HasCheckpoint();
-        bool tut = GameSaveManager.instance.IsTutorialCompleted();
-        Debug.Log($"[MainGameController] HasCheckpoint={has}, TutorialCompleted={tut}");
-        if (!tut)
-        {
-            tutorialPanel.SetActive(true);
-            return;
-        }
+        tutorialPanel.SetActive(true);
+        Time.timeScale = 0f;
     }
-
 
     public void EndTutorial()
     {
         tutorialPanel.SetActive(false);
+        Time.timeScale = 1f;
         GameSaveManager.instance.SetTutorialCompleted(true);
+        TaskManager.instance.NextTask();
+    }
+
+    void Start()
+    {
+        closeButton.onClick.AddListener(EndTutorial);
+
+        // Показываем туториал только если он не пройден
+        if (!GameSaveManager.instance.IsTutorialCompleted())
+        {
+            StartTutorial();
+        }
     }
 }

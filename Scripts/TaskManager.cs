@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
-using UnityEditor.U2D.Aseprite;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,13 +9,21 @@ using UnityEngine.SceneManagement;
 public class TaskManager : MonoBehaviour
 {
     public static TaskManager instance;
+
+    [Header("Auto-Dialogue Character Mappings")]
+    public List<CharacterMapping> characterMappings = new List<CharacterMapping>();
+
+    [Header("Default Spawn Point")]
+    public Transform defaultSpawnPoint;
+
+    [Header("JSON Tasks File")]
     public TaskData[] tasks;
+
     private UIManager uiManager;
     private int currentIndex = 0;
 
-    // Событие для внешних подписчиков, если нужно
     public event Action<TaskData> OnTaskChanged;
-
+    private HashSet<int> _autoPlayedStates = new HashSet<int>();
 
     void Awake()
     {
@@ -23,22 +32,23 @@ public class TaskManager : MonoBehaviour
             instance = this;
             DontDestroyOnLoad(gameObject);
             LoadTasksFromJson();
-            // подписываемся на загрузку сцен
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
             Destroy(gameObject);
-            return;
         }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // обновляем UIManager и UI
         uiManager = FindObjectOfType<UIManager>();
         UpdateTaskUI();
-        SubscribeToCurrentTrigger();  // чтобы Auto-триггер стал активен
+
+        var sp = GameObject.Find("Spawn_Default");
+        if (sp != null) defaultSpawnPoint = sp.transform;
+
+        SubscribeToTask(GetCurrentTaskData());
     }
 
     void Start()
@@ -49,319 +59,277 @@ public class TaskManager : MonoBehaviour
 
     void OnDestroy()
     {
-        // Отписка чтобы не было утечек
-        Interactable.OnAnyInteract -= HandleInteract;
-        SceneExitDetector.OnSceneExit -= HandleSceneExit;
+        HandleUnsubscribeAll();
+    }
+
+    private void HandleUnsubscribeAll()
+    {
+        Interactable.OnAnyInteract -= OnInteractTrigger;
+        SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
+        ComputerInterface.OnCorrectCommandEntered -= OnConsoleAccepted;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    public bool ShouldPlayCutscene()
-    {
-        // возвращаем флаг hasCutscene у текущего задания
-        var task = GetCurrentTaskData();
-        return task != null && task.hasCutscene;
-    }
-
-    /// <summary>
-    /// Подписывается на вызовы именно для этой задачи.
-    /// </summary>
     public void SubscribeToTask(TaskData task)
     {
         if (task == null) return;
+        Debug.Log($"[TaskManager] Subscribing to task {task.id}: {task.triggerType}");
+
+        if (task.id == 0)
+        {
+            FindObjectOfType<MainGameController>()?.StartTutorial();
+            return;
+        }
+
+        // Для задач с катсценой
+        if (task.hasCutscene)
+        {
+            StartCutsceneForTask(task, () => {
+                Debug.Log($"[TaskManager] Cutscene finished for task {task.id}");
+
+                // Подписываемся на OnAnyInteract только после завершения катсцены
+                if (task.triggerType == "Interact")
+                {
+                    Interactable.OnAnyInteract += OnInteractTrigger;
+                }
+                // Для Auto-задач сразу переходим к следующей задаче
+                else if (task.triggerType == "Auto")
+                {
+                    NextTask();
+                }
+            });
+        }
+        else
+        {
+            // Для задач без катсцены стандартная подписка
+            SubscribeToTaskTrigger(task);
+        }
+    }
+
+    private void StartCutsceneForTask(TaskData task, Action onCutsceneComplete)
+    {
+        Debug.Log($"[TaskManager] Starting cutscene for task {task.id}");
+        CutsceneController.instance.StartCutsceneForCurrentState(() => {
+            Debug.Log($"[TaskManager] Cutscene finished for task {task.id}");
+            onCutsceneComplete?.Invoke();
+        });
+    }
+
+
+    private void SubscribeToTaskTrigger(TaskData task)
+    {
+        switch (task.triggerType)
+        {
+            case "Auto":
+                StartCoroutine(AutoTriggerCoroutine(task));
+                break;
+
+            case "Interact":
+                if (task.id == 9)
+                {
+                    ComputerInterface.OnCorrectCommandEntered += OnConsoleAccepted;
+                    FindObjectOfType<ComputerInterface>()?.Show("Введите команду, чтобы продолжить…");
+                }
+                else
+                {
+                    Interactable.OnAnyInteract += OnInteractTrigger;
+                }
+                break;
+
+            case "SceneExit":
+                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+                break;
+        }
+    }
+
+    private void OnConsoleAccepted()
+    {
+        Debug.Log("[TaskManager] Console accepted → NextTask()");
+        ComputerInterface.OnCorrectCommandEntered -= OnConsoleAccepted;
+        NextTask();
+    }
+
+    public void UnsubscribeFromTask(TaskData task)
+    {
+        if (task == null) return;
+
         switch (task.triggerType)
         {
             case "Interact":
-                Debug.Log($"[TaskManager] Subscribing to Interactable '{task.triggerParam}'");
-                Interactable.OnAnyInteract += OnInteractTrigger;
+                if (task.id == 9)
+                    ComputerInterface.OnCorrectCommandEntered -= OnConsoleAccepted;
+                else
+                    Interactable.OnAnyInteract -= OnInteractTrigger;
                 break;
+
             case "SceneExit":
-                Debug.Log($"[TaskManager] Subscribing to SceneExit '{task.triggerParam}'");
-                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
-                break;
-            case "Auto":
-                // сразу после загрузки сцены
-                StartCoroutine(AutoTriggerCoroutine(task));
+                SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
                 break;
         }
     }
 
     private IEnumerator AutoTriggerCoroutine(TaskData task)
     {
-        // ждём одного кадра, чтобы всё успело инициализироваться
         yield return null;
 
-        // если для этой задачи нужна катсцена — запустим её
-        if (task.hasCutscene)
+        if (_autoPlayedStates.Contains(task.id)) yield break;
+        _autoPlayedStates.Add(task.id);
+
+        // Если это Auto-задача с катсценой - пропускаем стандартную обработку
+        if (task.hasCutscene) yield break;
+
+        // Стандартная обработка для Auto-задач без катсцены
+        var autoLines = DialogueCatalog.instance.GetAutoDialogueForCurrentState();
+        if (autoLines != null && autoLines.Length > 0)
         {
-            var ctrl = FindObjectOfType<CutsceneController>();
-            ctrl?.StartCutsceneForCurrentState();
-            // ждём, пока катсцена допроиграется (если у вас есть callback — можно ждать)
-            yield return new WaitForSeconds( /*длительность вашей катсцены*/ 2f);
+            SpawnAndShow(autoLines);
+            yield break;
         }
 
-        // затем берём диалоги по objectId
-        var lines = DialogueCatalog.instance.GetInteractableLines(task.triggerParam);
-        if (lines != null && lines.Length > 0)
+        var interactLines = DialogueCatalog.instance.GetInteractableLines(task.triggerParam);
+        if (interactLines.Length > 0)
         {
-            // показываем диалог и после него переключаем задачу
-            DialogueManager.instance.ShowDialogue(lines, () =>
+            DialogueManager.instance.ShowDialogue(interactLines, NextTask);
+            yield break;
+        }
+
+        NextTask();
+    }
+
+    private void SpawnAndShow(DialogueLine[] lines)
+    {
+        // 1) Сразу собираем список уникальных говорящих (кроме “Рассказчик” и пустых)
+        var speakerNames = lines
+            .Select(l => l.characterName)
+            .Where(name => !string.IsNullOrEmpty(name) && name != "Рассказчик")
+            .Distinct();
+
+        // 2) Для каждого - пробуем спавнить prefab
+        List<GameObject> spawnedCharacters = new List<GameObject>();
+        foreach (var speaker in speakerNames)
+        {
+            var map = characterMappings.FirstOrDefault(m => m.characterName == speaker);
+            if (map != null && map.prefab != null)
             {
-                NextTask();
-            });
-        }
-        else
-        {
-            // если диалогов нет — сразу к следующей задаче
-            NextTask();
-        }
-    }
-
-    /// <summary>
-    /// Убирает подписку, когда задача меняется.
-    /// </summary>
-    public void UnsubscribeFromTask(TaskData task)
-    {
-        if (task == null) return;
-        switch (task.triggerType)
-        {
-            case "Interact":
-                Debug.Log($"[TaskManager] Unsubscribing from Interactable '{task.triggerParam}'");
-                Interactable.OnAnyInteract -= OnInteractTrigger;
-                break;
-            case "SceneExit":
-                Debug.Log($"[TaskManager] Unsubscribing from SceneExit '{task.triggerParam}'");
-                SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
-                break;
-        }
-    }
-
-
-    private void HandleInteract(string id)
-    {
-        if (tasks == null || tasks.Length == 0)
-            return;   // ещё нет задач
-
-        var task = tasks[currentIndex];
-        if (task.triggerType == "Interact" && task.triggerParam == id)
-        {
-            NextTask();
-        }
-    }
-
-
-    private void HandleSceneExit(string sceneName)
-    {
-        if (tasks == null || tasks.Length == 0)
-            return;
-
-        var task = tasks[currentIndex];
-        if (task.triggerType == "SceneExit" && task.triggerParam == sceneName)
-        {
-            NextTask();
-            SceneManager.LoadScene(sceneName);
-        }
-    }
-
-
-    private void LoadTasksFromJson()
-    {
-        var ta = Resources.Load<TextAsset>("Tasks");
-        if (ta == null)
-        {
-            Debug.LogError("[TaskManager] Resources/Tasks.json не найден!");
-            tasks = new TaskData[0];
-            return;
+                Transform spawnAt = map.spawnPoint != null ? map.spawnPoint : defaultSpawnPoint;
+                Vector3 pos = spawnAt != null ? spawnAt.position : Vector3.zero;
+                var go = Instantiate(map.prefab, pos, Quaternion.identity);
+                spawnedCharacters.Add(go);
+            }
+            else
+            {
+                Debug.Log($"[TaskManager] Нет prefab для '{speaker}', спавн пропускаем");
+            }
         }
 
-        Debug.Log($"[TaskManager] Raw JSON:\n{ta.text}");
-
-        try
-        {
-            var wrapper = JsonUtility.FromJson<TaskList>(ta.text);
-            tasks = wrapper.tasks;
-            Debug.Log($"[TaskManager] Загрузили {tasks.Length} задач из JSON.");
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[TaskManager] Ошибка парсинга JSON: {e.Message}");
-            tasks = new TaskData[0];
-        }
-    }
-
-
-
-    public void NextTask()
-    {
-        // 1) отписываемся от предыдущей задачи
-        var oldTask = GetCurrentTaskData();
-        UnsubscribeFromTask(oldTask);
-
-        // 2) меняем индекс
-        currentIndex = Mathf.Min(currentIndex + 1, tasks.Length - 1);
-        GameSaveManager.instance.SaveCurrentTask(currentIndex);
-        UpdateTaskUI();
-        OnTaskChanged?.Invoke(tasks[currentIndex]);
-
-        // 3) ОБЯЗАТЕЛЬНО обновляем DialogueCatalog
-        DialogueCatalog.instance.RefreshState();
-        Debug.Log($"[TaskManager] After RefreshState, now state = {TaskManager.instance.GetCurrentTaskIndex()}");
-
-        // 4) подписываемся на новый триггер
-        var newTask = GetCurrentTaskData();
-        SubscribeToTask(newTask);
-
-        Debug.Log($"[TaskManager] newTask.id={newTask.id}, hasCutscene={newTask.hasCutscene}");
-        var ctrl = FindObjectOfType<CutsceneController>();
-        Debug.Log($"[TaskManager] CutsceneController found? {ctrl != null}");
-        if (newTask.hasCutscene && ctrl != null)
-            ctrl.StartCutsceneForCurrentState();
-        // 5) если нужно — показываем катсцену
-        if (newTask.hasCutscene)
-            FindObjectOfType<CutsceneController>()?.StartCutsceneForCurrentState();
-    }
-
-
-
-    public void ResetTasks()
-    {
-        var oldTask = GetCurrentTaskData();
-        UnsubscribeFromTask(oldTask);
-
-        currentIndex = 0;
-        GameSaveManager.instance.SaveCurrentTask(0);
-        UpdateTaskUI();
-        OnTaskChanged?.Invoke(tasks[currentIndex]);
-
-        // ОБЯЗАТЕЛЬНО сначала обновляем состояние каталога
-        DialogueCatalog.instance.RefreshState();
-
-        SubscribeToTask(tasks[currentIndex]);
-    }
-
-
-    public int GetCurrentTaskIndex() => currentIndex;
-    public TaskData GetCurrentTaskData() => tasks.Length > 0 ? tasks[currentIndex] : null;
-
-    private void UpdateTaskUI()
-    {
-        if (tasks == null || tasks.Length == 0)
-        {
-            Debug.LogWarning("[TaskManager] Нет задач для отображения.");
-            return;
-        }
-        if (currentIndex < 0 || currentIndex >= tasks.Length)
-        {
-            Debug.LogWarning($"[TaskManager] Некорректный currentIndex={currentIndex}.");
-            return;
-        }
-        uiManager?.SetTask(tasks[currentIndex].description);
-    }
-
-    private void SubscribeToCurrentTrigger()
-    {
-        var task = GetCurrentTaskData();
-        if (task == null) return;
-        Debug.Log($"[TaskManager] Subscribing to trigger for task {task.id}: {task.triggerType} → {task.triggerParam}");
-        switch (task.triggerType)
-        {
-            case "Interact":
-                Interactable.OnAnyInteract += OnInteractTrigger;
-                break;
-            case "SceneExit":
-                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
-                break;
-        }
-    }
-
-    private void UnsubscribeFromCurrentTrigger()
-    {
-        var task = GetCurrentTaskData();
-        if (task == null) return;
-        Debug.Log($"[TaskManager] Unsubscribing from trigger for task {task.id}: {task.triggerType} → {task.triggerParam}");
-        switch (task.triggerType)
-        {
-            case "Interact":
-                Interactable.OnAnyInteract -= OnInteractTrigger;
-                break;
-            case "SceneExit":
-                SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
-                break;
-        }
-    }
-
-    private void OnInteractTrigger(string objectId)
-    {
-        Debug.Log($"[TaskManager] OnInteractTrigger fired with id = '{objectId}' (current task index = {currentIndex})");
-        var task = GetCurrentTaskData();
-        if (task.triggerType != "Interact" || task.triggerParam != objectId)
-        {
-            Debug.Log($"[TaskManager]   → Ignored (expected {task.triggerParam})");
-            return;
-        }
-
-        // Получаем диалоги
-        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
-        Debug.Log($"[TaskManager]   → Found {lines?.Length ?? 0} dialogue lines for '{objectId}' in state {currentIndex}");
-        if (lines == null || lines.Length == 0)
-        {
-            Debug.Log($"[TaskManager]   → No lines: advancing immediately");
-            NextTask();
-            return;
-        }
-
-        // Показываем с колбэком
-        Debug.Log($"[TaskManager]   → Showing dialogue for '{objectId}'");
+        // 3) Запускаем сам диалог
         DialogueManager.instance.ShowDialogue(lines, () =>
         {
-            Debug.Log($"[TaskManager]   → Dialogue complete: advancing task");
+            // 4) После окончания — удаляем всё, что спавнили
+            foreach (var go in spawnedCharacters)
+                if (go != null) Destroy(go);
+
             NextTask();
         });
     }
 
+
+    private void OnInteractTrigger(string objectId)
+    {
+        var task = GetCurrentTaskData();
+        if (task == null) return;
+        if (task.triggerType != "Interact" || task.triggerParam != objectId)
+            return;
+
+        Debug.Log($"[TaskManager] OnInteractTrigger called for id='{objectId}', task={task.id}");
+
+        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
+        if (lines.Length > 0)
+            DialogueManager.instance.ShowDialogue(lines, NextTask);
+        else
+            NextTask();
+    }
+
     private void OnSceneExitTrigger(string sceneName)
     {
-        Debug.Log($"[TaskManager] OnSceneExitTrigger fired with scene = '{sceneName}' (current task index = {currentIndex})");
         var task = GetCurrentTaskData();
-        if (task.triggerType != "SceneExit" || task.triggerParam != sceneName)
-        {
-            Debug.Log($"[TaskManager]   → Ignored (expected {task.triggerParam})");
-            return;
-        }
+        if (task == null) return;
+        if (task.triggerType != "SceneExit" || task.triggerParam != sceneName) return;
 
         if (task.hasCutscene)
         {
-            Debug.Log($"[TaskManager]   → Showing cutscene before loading '{sceneName}'");
-            var (lines, interruptAt) = DialogueCatalog.instance.GetCutsceneForCurrentState();
-            Debug.Log($"[TaskManager]   → Cutscene has {lines.Length} lines, interruptAt = {interruptAt}");
-            DialogueManager.instance.ShowDialogue(lines, () =>
+            StartCutsceneForTask(task, () =>
             {
-                Debug.Log($"[TaskManager]   → Cutscene complete: loading scene '{sceneName}' and advancing task");
+                // After cutscene, load scene and proceed
                 SceneManager.LoadScene(sceneName);
                 NextTask();
             });
         }
         else
         {
-            Debug.Log($"[TaskManager]   → No cutscene: loading scene '{sceneName}' and advancing task");
             SceneManager.LoadScene(sceneName);
             NextTask();
         }
     }
 
-    private void ShowCurrentInteractableDialogue(string objectId, Action onComplete)
+    public void NextTask()
     {
-        // Получаем диалоги для этого объекта в текущем stateId
-        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
-        if (lines == null || lines.Length == 0)
-        {
-            Debug.LogWarning($"[TaskManager] Нет диалога для objectId={objectId} в stateId={currentIndex}");
-            onComplete?.Invoke();
-            return;
-        }
-        // Подписываемся на конец показа диалога
-        DialogueManager.instance.ShowDialogue(lines, onComplete);
+        var oldTask = GetCurrentTaskData();
+        UnsubscribeFromTask(oldTask);
+
+        currentIndex = Mathf.Min(currentIndex + 1, tasks.Length - 1);
+        GameSaveManager.instance.SaveCurrentTask(currentIndex);
+
+        DialogueCatalog.instance.ReloadForActiveScene();
+
+        UpdateTaskUI();
+        OnTaskChanged?.Invoke(GetCurrentTaskData());
+
+        SubscribeToTask(GetCurrentTaskData());
+
+        Debug.Log($"[TaskManager] Moved to task {currentIndex}");
     }
 
+    public void ResetTasks()
+    {
+        var old = GetCurrentTaskData();
+        UnsubscribeFromTask(old);
+
+        currentIndex = 0;
+        GameSaveManager.instance.SaveCurrentTask(currentIndex);
+
+        DialogueCatalog.instance.ReloadForActiveScene();
+
+        UpdateTaskUI();
+        OnTaskChanged?.Invoke(GetCurrentTaskData());
+
+        SubscribeToTask(GetCurrentTaskData());
+        _autoPlayedStates.Clear();
+    }
+
+    public int GetCurrentTaskIndex() => currentIndex;
+
+    private void UpdateTaskUI()
+    {
+        uiManager?.SetTask(GetCurrentTaskData()?.description ?? string.Empty);
+    }
+
+    private void LoadTasksFromJson()
+    {
+        var ta = Resources.Load<TextAsset>("Tasks");
+        if (ta == null) { tasks = new TaskData[0]; return; }
+        tasks = JsonUtility.FromJson<TaskList>(ta.text).tasks;
+    }
+
+    public TaskData GetCurrentTaskData() => tasks.Length > 0 ? tasks[currentIndex] : null;
+}
+
+[Serializable]
+public class CharacterMapping
+{
+    public string characterName;
+    public GameObject prefab;
+    public Transform spawnPoint;
 }
 
 [Serializable]
@@ -369,8 +337,8 @@ public class TaskData
 {
     public int id;
     public string description;
-    public string triggerType;    // "Interact" или "SceneExit"
-    public string triggerParam;   // objectId или имя сцены
+    public string triggerType;
+    public string triggerParam;
     public bool hasCutscene;
 }
 

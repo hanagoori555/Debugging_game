@@ -4,26 +4,29 @@ using TMPro;
 
 public class CutsceneController : MonoBehaviour
 {
-    public static CutsceneController instance;   // <-- singleton
+    public static CutsceneController instance;
 
-    [Header("UI элементы катсцены")]
+    [Header("UI элементы")]
     public GameObject cutscenePanel;
+    public Image backgroundImage;
     public TextMeshProUGUI dialogueText;
     public TextMeshProUGUI speakerNameText;
     public Image portraitImage;
 
-    [Header("Отключать движение игрока во время катсцены")]
+    [Header("Настройки")]
     public bool disablePlayer = true;
 
     private PlayerController playerController;
-    private DialogueLine[] lines;    // строки текущей катсцены
+    private DialogueLine[] lines;
     private int currentIndex;
-    private int interruptAt;         // индекс для прерывания
+    private int interruptAt;
     private bool isPlaying;
+
+    // Колбэк завершения
+    private System.Action onCompleteCallback;
 
     void Awake()
     {
-        // singleton + don’t destroy
         if (instance == null)
         {
             instance = this;
@@ -35,55 +38,42 @@ public class CutsceneController : MonoBehaviour
             return;
         }
 
-        // сразу спрячем панель
-        if (cutscenePanel != null)
-            cutscenePanel.SetActive(false);
+        if (cutscenePanel != null) cutscenePanel.SetActive(false);
     }
 
     void Start()
     {
-        // Проверяем UI и DialogueCatalog
-        if (DialogueCatalog.instance == null ||
-            cutscenePanel == null ||
-            dialogueText == null ||
-            speakerNameText == null ||
-            portraitImage == null)
-        {
-            Debug.LogError("[CutsceneController] Не все зависимости назначены!");
-            enabled = false;
-            return;
-        }
-
-        // Получаем управление игроком (если нужно)
-        if (disablePlayer)
-        {
-            var p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null)
-                playerController = p.GetComponent<PlayerController>();
-        }
+        var p = GameObject.FindGameObjectWithTag("Player");
+        if (p != null) playerController = p.GetComponent<PlayerController>();
     }
 
-    /// <summary>
-    /// Запуск катсцены для текущего stateId из DialogueCatalog.
-    /// </summary>
-    public void StartCutsceneForCurrentState()
+    public void StartCutsceneForCurrentState(System.Action onComplete = null)
     {
-        Debug.Log($"[CutsceneController] StartCutsceneForCurrentState() called. disablePlayer={disablePlayer}");
+        this.onCompleteCallback = onComplete;
+
         var tuple = DialogueCatalog.instance.GetCutsceneForCurrentState();
         lines = tuple.lines;
         interruptAt = tuple.interruptAt;
-        Debug.Log($"[CutsceneController] Loaded {lines.Length} lines, interruptAt={interruptAt}");
+
         if (lines == null || lines.Length == 0)
         {
-            Debug.LogWarning("[CutsceneController] No lines, skipping.");
+            onCompleteCallback?.Invoke();
             return;
         }
 
-        // Отключаем управление игроком
         if (disablePlayer && playerController != null)
             playerController.enabled = false;
 
-        // Запускаем воспроизведение
+        if (lines[0].background != null)
+        {
+            backgroundImage.sprite = lines[0].background;
+            backgroundImage.gameObject.SetActive(true);
+        }
+        else
+        {
+            backgroundImage.gameObject.SetActive(false); // Скрываем если нет картинки
+        }
+
         currentIndex = 0;
         isPlaying = true;
         cutscenePanel.SetActive(true);
@@ -93,41 +83,60 @@ public class CutsceneController : MonoBehaviour
     void Update()
     {
         if (!isPlaying) return;
-        if (dialogueText == null) return;  // <— защита от destroyed
+
         if (Input.GetKeyDown(KeyCode.Space))
             ShowNextLine();
     }
 
     private void ShowNextLine()
     {
-        if (currentIndex < lines.Length)
+        if (currentIndex >= lines.Length)
         {
-            var L = lines[currentIndex++];
-            dialogueText.text = L.text;
-            speakerNameText.text = L.characterName;
-            portraitImage.sprite = L.avatar;
+            EndCutscene();
+            return;
+        }
 
-            // Прерывание, если нужно
-            if (interruptAt >= 0 && currentIndex == interruptAt)
-            {
-                EndCutscene();
-            }
+        var L = lines[currentIndex];
+        dialogueText.text = L.text;
+        Debug.Log($"Text set to: '{dialogueText.text}', Active: {dialogueText.gameObject.activeInHierarchy}, Color: {dialogueText.color}, RectTransform: {dialogueText.rectTransform.anchoredPosition}");
+        speakerNameText.text = L.characterName;
+
+        if (L.avatar != null)
+        {
+            portraitImage.gameObject.SetActive(true);
+            portraitImage.sprite = L.avatar;
         }
         else
         {
-            EndCutscene();
+            portraitImage.gameObject.SetActive(false);
         }
+
+        // **новая часть**: обновляем фон под каждую строку
+        if (L.background != null)
+        {
+            backgroundImage.sprite = L.background;
+            backgroundImage.gameObject.SetActive(true);
+        }
+        else
+        {
+            backgroundImage.gameObject.SetActive(false);
+        }
+
+        Debug.Log($"[CutsceneController] Showing line {currentIndex + 1}/{lines.Length}: {L.text}");
+        currentIndex++;
     }
 
     private void EndCutscene()
     {
+        Debug.Log("[CutsceneController] EndCutscene");
         isPlaying = false;
         cutscenePanel.SetActive(false);
 
         if (disablePlayer && playerController != null)
             playerController.enabled = true;
 
-        // Можно здесь пометить флаг завершённой катсцены, если нужно:
-        // GameSaveManager.instance.SetCutsceneCompleted(DialogueCatalog.instance.CurrentCutsceneId);
+        // Вызываем колбэк, чтобы TaskManager мог продолжить
+        onCompleteCallback?.Invoke();
+        onCompleteCallback = null;
     }
 }

@@ -99,9 +99,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9120e7040d603fd49a4f6611be0e0871, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fallSpeed: 7
-  feedbackPrefab: {fileID: 0}
-  feedbackContainer: {fileID: 0}
+  fallSpeed: 16
 --- !u!61 &2322659951238528529
 BoxCollider2D:
   m_ObjectHideFlags: 0
