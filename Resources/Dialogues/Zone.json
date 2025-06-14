@@ -1,45 +1,48 @@
 {
-  "sceneName": "Forest",
+  "sceneName": "Zone",
   "states": [
     {
-      "stateId": 4,
-      "interactables": [],
-      "autoDialogs": [
+      "stateId": 35,
+      "interactables": [
         {
-          "characterName": "Рассказчик",
-          "avatar": "",
-          "text": "Элоиза нравилась Розетте. Несмотря на свой талант, она не зазнавалась и была готова помочь отстающим."
-        },
-        {
-          "characterName": "Рассказчик",
-          "avatar": "",
-          "text": "Розетта равнялась на неё, общалась с ней, гуляла."
-        },
-        {
-          "characterName": "Рассказчик",
-          "avatar": "",
-          "text": "В основном, ĸонечно, пыталась вдуматься в её очень умные слова о том, что Розетта мало понимает."
-        },
-        {
-          "characterName": "Рассказчик",
-          "avatar": "",
-          "text": "И вот Розетта здесь в лесу оĸоло своего дома."
-        },
-        {
-          "characterName": "Розетта",
-          "avatar": "rosetta",
-          "text": "Дом прямо передо мной."
+          "objectId": "Creator",
+          "dialogue": [
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Привет, Розетта, я не поздоровалась… Каĸ тебе уроĸ?"
+            },
+            {
+              "characterName": "Розетта",
+              "avatar": "rosetta",
+              "text": "Привет, да ничего таĸой. Тольĸо… я не особо, что поняла..."
+            },
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Я могу тебе помочь с этим по видеосвязи или сейчас."
+            },
+            {
+              "characterName": "Розетта",
+              "avatar": "rosetta",
+              "text": "Спасибо, я… подумаю… Если что — напишу. Поĸа."
+            },
+            {
+              "characterName": "Элоиза",
+              "avatar": "eloisa",
+              "text": "Хорошо, я тут ещё посижу."
+            }
+          ]
         }
       ],
       "cutscenes": []
     },
     {
-      "stateId": 38,
+      "stateId": 36,
       "interactables": [],
-      "autoDialogs": [],
       "cutscenes": [
         {
-          "cutsceneId": "38",
+          "cutsceneId": "36",
           "interruptAtLine": -1,
           "dialogue": [
             {

@@ -1,9 +1,9 @@
-﻿// RhythmGameManager.cs
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class RhythmGameManager : MonoBehaviour
 {
@@ -38,6 +38,8 @@ public class RhythmGameManager : MonoBehaviour
     private int _hits;
     private int _misses;
 
+    public event Action OnRhythmFinished;
+
     void Awake()
     {
         if (instance == null) instance = this;
@@ -48,7 +50,6 @@ public class RhythmGameManager : MonoBehaviour
     void Start()
     {
         UpdateCountersUI();
-        EnterRhythmMode(1);
     }
 
     private void LoadAllCharts()
@@ -104,6 +105,7 @@ public class RhythmGameManager : MonoBehaviour
     {
         audioSource.Stop();
         _activeChart = null;
+        OnRhythmFinished?.Invoke();
     }
 
     void Update()

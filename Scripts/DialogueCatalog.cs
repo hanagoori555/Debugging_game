@@ -30,11 +30,12 @@ public class DialogueCatalog : MonoBehaviour
 
     public void ReloadForActiveScene()
     {
-        _sceneData = DialogueLoader.LoadSceneData(SceneManager.GetActiveScene().name);
+        string sceneName = SceneManager.GetActiveScene().name;
+        _sceneData = DialogueLoader.LoadSceneData(sceneName);
 
         if (_sceneData == null)
         {
-            Debug.LogWarning($"[DialogueCatalog] No dialogue data for scene {SceneManager.GetActiveScene().name}");
+            Debug.LogWarning($"[DialogueCatalog] No dialogue data for scene {sceneName}");
             _currentState = null;
             return;
         }
@@ -46,27 +47,47 @@ public class DialogueCatalog : MonoBehaviour
             return;
         }
 
-        if (_sceneData.states == null)
+        int stateId = TaskManager.instance.GetCurrentTaskIndex();
+
+        // Защита от отсутствия состояний
+        if (_sceneData.states == null || _sceneData.states.Length == 0)
         {
-            Debug.LogError($"[DialogueCatalog] _sceneData.states is null for scene {_sceneData.sceneName}");
+            Debug.LogWarning($"[DialogueCatalog] No states defined for scene {sceneName}");
             _currentState = null;
             return;
         }
 
-        int stateId = TaskManager.instance.GetCurrentTaskIndex();
-        _currentState = _sceneData.states
-            .FirstOrDefault(s => s.stateId == stateId);
+        _currentState = _sceneData.states.FirstOrDefault(s => s.stateId == stateId);
 
         if (_currentState == null)
         {
-            Debug.LogWarning($"[DialogueCatalog] No state {stateId} in scene {_sceneData.sceneName}");
+            Debug.LogWarning($"[DialogueCatalog] No state {stateId} in scene {sceneName}");
             return;
         }
 
-        Debug.Log($"[DialogueCatalog] ReloadForActiveScene: Loaded state {stateId} for scene {_sceneData.sceneName}");
-        Debug.Log($"[DialogueCatalog] interactables: {string.Join(",", _currentState.interactables.Select(i => i.objectId))}");
-        Debug.Log($"[DialogueCatalog] autoDialogs count: {_currentState.autoDialogs?.Length ?? 0}");
-        Debug.Log($"[DialogueCatalog] cutscenes: {string.Join(",", _currentState.cutscenes.Select(c => c.cutsceneId))}");
+        Debug.Log($"[DialogueCatalog] ReloadForActiveScene: Loaded state {stateId} for scene {sceneName}");
+
+        // Добавил проверки на null для безопасного логирования
+        Debug.Log($"[DialogueCatalog] interactables: {(_currentState.interactables != null ? string.Join(",", _currentState.interactables.Select(i => i.objectId)) : "null")}");
+        Debug.Log($"[DialogueCatalog] autoDialogs count: {(_currentState.autoDialogs != null ? _currentState.autoDialogs.Length : 0)}");
+        Debug.Log($"[DialogueCatalog] cutscenes: {(_currentState.cutscenes != null ? string.Join(",", _currentState.cutscenes.Select(c => c.cutsceneId)) : "null")}");
+    }
+
+    public DialogueLine[] GetAutoDialogueForCurrentState()
+    {
+        if (_currentState == null || _currentState.autoDialogs == null)
+        {
+            Debug.LogWarning("[DialogueCatalog] No auto dialogs available");
+            return new DialogueLine[0];
+        }
+
+        return _currentState.autoDialogs.Select(d => new DialogueLine
+        {
+            characterName = d.characterName,
+            avatar = string.IsNullOrEmpty(d.avatar) ? null : Resources.Load<Sprite>($"Portraits/{d.avatar}"),
+            text = d.text,
+            background = string.IsNullOrEmpty(d.backgroundImage) ? null : Resources.Load<Sprite>($"Backgrounds/{d.backgroundImage}")
+        }).ToArray();
     }
 
     public DialogueLine[] GetInteractableLines(string objectId)
@@ -82,18 +103,6 @@ public class DialogueCatalog : MonoBehaviour
 
         Debug.Log($"[DialogueCatalog]  → Найдены {entry.dialogue.Length} строк(а) для '{objectId}'");
         return ConvertLines(entry.dialogue);
-    }
-
-    public DialogueLine[] GetAutoDialogueForCurrentState()
-    {
-        if (_currentState?.autoDialogs == null) return new DialogueLine[0];
-        return _currentState.autoDialogs.Select(d => new DialogueLine
-        {
-            characterName = d.characterName,
-            avatar = string.IsNullOrEmpty(d.avatar) ? null : Resources.Load<Sprite>($"Portraits/{d.avatar}"),
-            text = d.text,
-            background = string.IsNullOrEmpty(d.backgroundImage) ? null : Resources.Load<Sprite>($"Backgrounds/{d.backgroundImage}")
-        }).ToArray();
     }
 
     public (DialogueLine[] lines, int interruptAt) GetCutscene(string cutsceneId)

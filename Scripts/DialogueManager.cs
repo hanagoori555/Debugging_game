@@ -41,6 +41,8 @@ public class DialogueManager : MonoBehaviour
     /// </summary>
     public void ShowDialogue(DialogueLine[] lines, Action onComplete = null)
     {
+        PlayerController.InputBlocked = true;
+
         Debug.Log($"[DialogueManager] ShowDialogue called with {lines.Length} lines");
         dialogueLines = lines;
         currentLineIndex = 0;
@@ -82,6 +84,8 @@ public class DialogueManager : MonoBehaviour
 
     public void EndDialogue()
     {
+        PlayerController.InputBlocked = false;
+
         Debug.Log("[DialogueManager] EndDialogue called");
         dialogueBox.SetActive(false);
         dialogueText.gameObject.SetActive(false);
@@ -89,7 +93,9 @@ public class DialogueManager : MonoBehaviour
         characterAvatarImage.sprite = null;
         characterAvatarImage.enabled = false;
 
-        // вызываем колбэк после закрытия последней строки
+        // Разблокируем ввод перед вызовом колбэка —
+        // таким образом игрок точно не дойдёт дальше, пока диалог открыт
+        PlayerController.InputBlocked = false;
 
         Debug.Log($"[DialogueManager] Диалог завершён, вызываем колбэк.");
         onCompleteCallback?.Invoke();

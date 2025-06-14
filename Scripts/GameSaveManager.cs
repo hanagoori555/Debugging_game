@@ -187,6 +187,7 @@ public class GameSaveManager : MonoBehaviour
     }
     public void SaveCurrentTask(int index)
     {
+        Debug.Log($"[GameSaveManager] Saving task index = {index}");
         using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
         {
             var rec = conn.Find<CheckpointRecord>(PlayerId)
@@ -200,7 +201,9 @@ public class GameSaveManager : MonoBehaviour
         using (var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite))
         {
             var rec = conn.Find<CheckpointRecord>(PlayerId);
-            return rec != null ? rec.CurrentTaskIndex : 0;
+            int idx = rec != null ? rec.CurrentTaskIndex : 0;
+            Debug.Log("[GameSaveManager] Loaded task index = " + idx);
+            return idx;
         }
     }
 }

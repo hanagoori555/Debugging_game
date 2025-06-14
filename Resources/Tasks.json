@@ -2,14 +2,14 @@
   "tasks": [
     {
       "id": 0,
-      "description": "",
+      "description": "Первая задача",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 1,
-      "description": "Поговорить с Элоизой",
+      "description": "Поговорить с Элоизой. ПРЕ",
       "triggerType": "Interact",
       "triggerParam": "EloisaSit1",
       "hasCutscene": true
@@ -44,7 +44,7 @@
     },
     {
       "id": 6,
-      "description": "",
+      "description": "Шестая задача",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": false
@@ -58,7 +58,7 @@
     },
     {
       "id": 8,
-      "description": "Катсцена: диалоги — часть 1",
+      "description": "Катсцена: интерактив — часть 1",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
@@ -72,252 +72,231 @@
     },
     {
       "id": 10,
-      "description": "Катсцена: диалоги — часть 2",
+      "description": "Катсцена: интерактив — часть 2",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
     },
     {
       "id": 11,
-      "description": "ПОЙТИ ДОМОЙ",
-      "triggerType": "SceneExit",
-      "triggerParam": "Forest",
-      "hasCutscene": true
+      "description": "Перенос в школу",
+      "triggerType": "SceneAuto",
+      "triggerParam": "School",
+      "hasCutscene": false
     },
     {
       "id": 12,
+      "description": "ПОЙТИ ДОМОЙ",
+      "triggerType": "SceneExit",
+      "triggerParam": "Forest",
+      "hasCutscene": false
+    },
+    {
+      "id": 13,
       "description": "ПОЙТИ ДОМОЙ",
       "triggerType": "SceneExit",
       "triggerParam": "Home",
       "hasCutscene": false
     },
     {
-      "id": 13,
+      "id": 14,
       "description": "Пойти спать",
       "triggerType": "Interact",
       "triggerParam": "Bed",
-      "hasCutscene": true
-    },
-    {
-      "id": 11,
-      "description": "Поговорить с существом",
-      "triggerType": "Interact",
-      "triggerParam": "Crystal",
-      "hasCutscene": true
-    },
-    {
-      "id": 12,
-      "description": "Найти выход",
-      "triggerType": "SceneExit",
-      "triggerParam": "StreetScene",
       "hasCutscene": false
     },
     {
-      "id": 14,
-      "description": "Сцена с лесом (повторно)",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
-    },
-    {
       "id": 15,
-      "description": "Сцена с комнатой (повторно)",
+      "description": "Катсцена-встреча",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
     },
     {
       "id": 16,
-      "description": "Диалог с Создательницей",
-      "triggerType": "Interact",
-      "triggerParam": "CreatorNPC",
+      "description": "Перенос в школу",
+      "triggerType": "SceneAuto",
+      "triggerParam": "School",
       "hasCutscene": false
     },
     {
       "id": 17,
-      "description": "Взаимодействие с кроватью (повторно)",
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
+      "hasCutscene": false
+    },
+    {
+      "id": 18,
+      "description": "Пойти домой...",
+      "triggerType": "SceneExit",
+      "triggerParam": "Forest",
+      "hasCutscene": false
+    },
+    {
+      "id": 19,
+      "description": "Пойти домой...",
+      "triggerType": "SceneExit",
+      "triggerParam": "Home",
+      "hasCutscene": false
+    },
+    {
+      "id": 20,
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
+      "hasCutscene": false
+    },
+    {
+      "id": 21,
+      "description": "Лечь спать",
       "triggerType": "Interact",
       "triggerParam": "Bed",
       "hasCutscene": false
     },
     {
-      "id": 18,
-      "description": "Монолог Розетты (повторно)",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": false
-    },
-    {
-      "id": 19,
-      "description": "Катсцена со сценами, чтобы показать, как проходят дни",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
-    },
-    {
-      "id": 20,
-      "description": "Диалог с Создательницей (повторно)",
-      "triggerType": "Interact",
-      "triggerParam": "CreatorNPC",
-      "hasCutscene": false
-    },
-    {
-      "id": 21,
-      "description": "Катсцена с таймскипом",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
-    },
-    {
       "id": 22,
-      "description": "Розетта просыпается в Тёмном мире",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
+      "description": "",
+      "triggerType": "SceneAuto",
+      "triggerParam": "DarkWorld",
+      "hasCutscene": false
     },
     {
       "id": 23,
-      "description": "Взаимодействие с тёмными сущностями",
-      "triggerType": "Interact",
-      "triggerParam": "DarkEntities",
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 24,
-      "description": "Решение пятнашек",
+      "description": "Поговорить с существом",
       "triggerType": "Interact",
-      "triggerParam": "PuzzleFifteen",
+      "triggerParam": "Crystal",
       "hasCutscene": false
     },
     {
       "id": 25,
-      "description": "Погоня",
-      "triggerType": "Auto",
+      "description": "Найти выход",
+      "triggerType": "BackgroundTransition",
       "triggerParam": "",
-      "hasCutscene": true
+      "hasCutscene": false
     },
     {
       "id": 26,
-      "description": "Выход на чёрный экран",
-      "triggerType": "SceneExit",
-      "triggerParam": "BlackScreen",
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 27,
-      "description": "Монолог Тёмной сущности",
-      "triggerType": "Auto",
-      "triggerParam": "",
+      "description": "Поговорить с существом ещё раз",
+      "triggerType": "Interact",
+      "triggerParam": "Crystal",
       "hasCutscene": false
     },
     {
       "id": 28,
-      "description": "Ритм-игра",
-      "triggerType": "Auto",
+      "description": "Найти выход",
+      "triggerType": "BackgroundTransition",
       "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 29,
-      "description": "Катсцена с падением из Тёмного мира на землю",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
+      "description": "Поговорить с существом ЕЩЁ РАЗ",
+      "triggerType": "Interact",
+      "triggerParam": "Crystal",
+      "hasCutscene": false
     },
     {
       "id": 30,
-      "description": "Катсцена со смертью Розетты и попаданием в Зону перерождения",
-      "triggerType": "Auto",
+      "description": "НАЙТИ ВЫХОД",
+      "triggerType": "BackgroundTransition",
       "triggerParam": "",
-      "hasCutscene": true
+      "hasCutscene": false
     },
     {
       "id": 31,
-      "description": "Диалог с Создательницей",
-      "triggerType": "Interact",
-      "triggerParam": "CreatorNPC",
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 32,
-      "description": "Подержать кнопку у часов",
-      "triggerType": "Interact",
-      "triggerParam": "ClockButton",
+      "description": "Ритм-игра",
+      "triggerType": "Rhythm",
+      "triggerParam": "1",
       "hasCutscene": false
     },
     {
       "id": 33,
-      "description": "Катсцена с С.945",
+      "description": "Катсцена с падением",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
     },
     {
       "id": 34,
-      "description": "Диалог с Создательницей (С.945)",
-      "triggerType": "Interact",
-      "triggerParam": "CreatorNPC",
+      "description": "Перенос в Зону Перерождения",
+      "triggerType": "SceneAuto",
+      "triggerParam": "Zone",
       "hasCutscene": false
     },
     {
       "id": 35,
-      "description": "Подержать кнопку у часов (повторно)",
+      "description": "Поговорите с Создательницей",
       "triggerType": "Interact",
-      "triggerParam": "ClockButton",
+      "triggerParam": "Creator",
       "hasCutscene": false
     },
     {
       "id": 36,
-      "description": "Катсцена с С.946",
+      "description": "Катсцена с историей",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
     },
     {
       "id": 37,
-      "description": "Диалог с Создательницей (С.946)",
-      "triggerType": "Interact",
-      "triggerParam": "CreatorNPC",
+      "description": "Идти вдаль",
+      "triggerType": "SceneExit",
+      "triggerParam": "Forest",
       "hasCutscene": false
     },
     {
       "id": 38,
-      "description": "Ходьба до замка по Зоне перерождения",
-      "triggerType": "SceneExit",
-      "triggerParam": "CastlePath",
-      "hasCutscene": false
+      "description": "",
+      "triggerType": "Auto",
+      "triggerParam": "",
+      "hasCutscene": true
     },
     {
       "id": 39,
-      "description": "Сцена с лесом (Зона перерождения)",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": true
+      "description": "ЭЛОИЗА",
+      "triggerType": "SceneExit",
+      "triggerParam": "School",
+      "hasCutscene": false
     },
     {
       "id": 40,
-      "description": "Сцена с классом школы",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
-      "hasCutscene": true
+      "hasCutscene": false
     },
     {
       "id": 41,
-      "description": "Диалог с Элоизой (финал)",
-      "triggerType": "Interact",
-      "triggerParam": "EloisaNPC",
+      "description": "Ритм-игра с Элоизой",
+      "triggerType": "Rhythm",
+      "triggerParam": "2",
       "hasCutscene": false
     },
     {
       "id": 42,
-      "description": "Ритм-игра с Элоизой",
-      "triggerType": "Auto",
-      "triggerParam": "",
-      "hasCutscene": false
-    },
-    {
-      "id": 43,
-      "description": "Катсцена-концовка",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true

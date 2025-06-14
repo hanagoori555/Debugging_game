@@ -14,5 +14,5 @@ public class CheckpointRecord
     public string CompletedCutscenes { get; set; }
     public bool TutorialCompleted { get; set; }
 
-    public int CurrentTaskIndex;
+    public int CurrentTaskIndex { get; set; }
 }

@@ -49,6 +49,8 @@ public class CutsceneController : MonoBehaviour
 
     public void StartCutsceneForCurrentState(System.Action onComplete = null)
     {
+        PlayerController.InputBlocked = true;
+
         this.onCompleteCallback = onComplete;
 
         var tuple = DialogueCatalog.instance.GetCutsceneForCurrentState();
@@ -128,6 +130,8 @@ public class CutsceneController : MonoBehaviour
 
     private void EndCutscene()
     {
+        PlayerController.InputBlocked = false;
+
         Debug.Log("[CutsceneController] EndCutscene");
         isPlaying = false;
         cutscenePanel.SetActive(false);

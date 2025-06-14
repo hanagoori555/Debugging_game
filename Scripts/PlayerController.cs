@@ -7,6 +7,7 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 movement;
     private Animator animator;
+    public static bool InputBlocked = false;
 
     void Start()
     {
@@ -28,6 +29,15 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (InputBlocked)
+        {
+            // гасим остаточное движение и анимацию
+            rb.velocity = Vector2.zero;
+            movement = Vector2.zero;
+            animator.SetBool("isWalking", false);
+            return;
+        }
+
         movement.x = Input.GetAxisRaw("Horizontal");
         movement.y = Input.GetAxisRaw("Vertical");
         if (movement.magnitude > 1) movement.Normalize();

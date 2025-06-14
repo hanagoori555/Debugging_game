@@ -35,6 +35,16 @@ public class MusicManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    public void StopMusic()
+    {
+        if (src.isPlaying)
+        {
+            Debug.Log("[MusicManager] Stopping background music");
+            src.Stop();
+        }
+    }
+
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         // ищем, есть ли под эту сцену отдельный клип
