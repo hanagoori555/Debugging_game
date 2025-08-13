@@ -723,7 +723,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.39215687}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.7058824}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2041,8 +2041,15 @@ MonoBehaviour:
   - characterName: "\u041C\u0430\u043C\u0430"
     prefab: {fileID: 1057072437319124884, guid: 236669010fe61044ca59b6f17176f84a, type: 3}
     spawnPoint: {fileID: 0}
+  - characterName: '#@D6EE2'
+    prefab: {fileID: 287073009427662077, guid: 758780dc41a489449b6e8dc93f79de6a, type: 3}
+    spawnPoint: {fileID: 0}
   defaultSpawnPoint: {fileID: 0}
   tasks: []
+  spawnMappings:
+  - taskId: 39
+    sceneName: School
+    spawnObjectName: SpawnPointBattle
 --- !u!4 &1179079214
 Transform:
   m_ObjectHideFlags: 0
@@ -2578,7 +2585,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.392}
+  m_Color: {r: 0, g: 0, b: 0, a: 0.7058824}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

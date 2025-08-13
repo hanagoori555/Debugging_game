@@ -2,8 +2,50 @@
   "battleNumber": 2,
   "musicPath": "Audio/EloisaBattle",
   "notes": [
-    { "time": 1.2, "lane": 0, "duration": 0 },
-    { "time": 1.5, "lane": 1, "duration": 0.5 },
-    { "time": 2.0, "lane": 2, "duration": 0 }
+    {
+      "time": 0,
+      "lane": 0,
+      "duration": 0
+    },
+    {
+      "time": 3.413,
+      "lane": 1,
+      "duration": 0
+    },
+    {
+      "time": 4.679,
+      "lane": 1,
+      "duration": 0
+    },
+    {
+      "time": 5.944,
+      "lane": 0,
+      "duration": 0
+    },
+    {
+      "time": 6.944,
+      "lane": 2,
+      "duration": 0.7
+    },
+    {
+      "time": 7.3,
+      "lane": 4,
+      "duration": 0
+    },
+    {
+      "time": 8.3,
+      "lane": 5,
+      "duration": 0
+    },
+    {
+      "time": 9.3,
+      "lane": 6,
+      "duration": 0
+    },
+    {
+      "time": 10.3,
+      "lane": 7,
+      "duration": 0
+    }
   ]
 }

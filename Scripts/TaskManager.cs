@@ -19,6 +19,9 @@ public class TaskManager : MonoBehaviour
     [Header("JSON Tasks File")]
     public TaskData[] tasks;
 
+    [Header("Task -> Spawn mappings (optional)")]
+    public List<SpawnMapping> spawnMappings = new List<SpawnMapping>();
+
     private UIManager uiManager;
     private int currentIndex = 0;
     private string _previousGameScene;
@@ -28,9 +31,16 @@ public class TaskManager : MonoBehaviour
     private bool _rhythmDone = false;
     // true, если мы только что перешли по SceneExit и ждём загрузки новой сцены
     private bool _returningFromSceneExit = false;
+    // true, если SetCurrentTaskIndex(..., isLoading:true) вызван (Continue из меню)
+    public bool IsContinueMode { get; private set; } = false;
+    // --- new fields for deferred SceneExit teleport ---
+    private int _sceneExitInitiatorTaskId = -1;
+    private bool _hasDeferredSpawn = false;
+    private Vector3 _deferredSpawnPosition = Vector3.zero;
 
     public event Action<TaskData> OnTaskChanged;
     private HashSet<int> _autoPlayedStates = new HashSet<int>();
+    private List<SceneSpawnPoint> _sceneSpawnPoints = new List<SceneSpawnPoint>();
 
     void Awake()
     {
@@ -51,6 +61,7 @@ public class TaskManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        Debug.Log($"[TaskManager] OnSceneLoaded: scene={scene.name}, currentTaskIndex={currentIndex}, currentTaskId={(GetCurrentTaskData()?.id.ToString() ?? "null")}");
         // 1) Если мы только что вернулись из ритма — делаем NextTask и выходим
         if (_returningFromRhythm)
         {
@@ -60,26 +71,71 @@ public class TaskManager : MonoBehaviour
             return;
         }
 
-        // 2) возврат по выходу из сцены
+        // 2) возврат по выходу из сцены (SceneExit)
         if (_returningFromSceneExit)
         {
             _returningFromSceneExit = false;
-            // телепорт и прочая инициализация сцены пройдёт в обычном блоке ниже,
-            // но сначала переключаем задачу
+
+            int initiatorId = _sceneExitInitiatorTaskId;
+            _sceneExitInitiatorTaskId = -1; // очистим
+
+            if (initiatorId != -1)
+            {
+                Debug.Log($"[TaskManager] Returned from SceneExit initiated by task {initiatorId}. Trying to teleport for initiating task before NextTask.");
+
+                // попробуем найти спавн для задачи-инициатора (та самая логика, что у вас уже есть в GetSpawnForTask)
+                var spawn = GetSpawnForTask(initiatorId, scene.name);
+
+                if (spawn != null)
+                {
+                    var player = FindObjectOfType<PlayerController>();
+                    if (player != null)
+                    {
+                        Debug.Log($"[TaskManager] Teleporting player for initiator task {initiatorId} to {spawn.position}");
+                        player.TeleportTo(spawn.position);
+                    }
+                    else
+                    {
+                        // игрок ещё не создан — запомним позицию, чтобы применить в PlayerController.Start()
+                        Debug.Log($"[TaskManager] Player not found now — deferring teleport to {spawn.position}");
+                        _hasDeferredSpawn = true;
+                        _deferredSpawnPosition = spawn.position;
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[TaskManager] No spawn found for initiator task {initiatorId}, scene {scene.name}");
+                }
+            }
+
+            // теперь уже переключаемся на следующую задачу, как и было задумано
             NextTask();
+
             // (!) не return, чтобы подписать новую задачу на этот же кадр
         }
+
 
         // 3) Если загрузилась сама сцена "Battle" — ничего не трогаем
         if (scene.name == "Battle")
             return;
 
+        // Очистим старые регистрационные спавнпоинты и позволим новым зарегистрироваться
+        ClearSceneSpawnPoints();
+
+        // затем можно найти вручную все SceneSpawnPoint в сцене, если они уже созданы:
+        // (если SceneSpawnPoint выполняет Register на Awake — это не обязательно, но страховка)
+        foreach (var sceneSpawn in FindObjectsOfType<SceneSpawnPoint>())
+        {
+            RegisterSceneSpawnPoint(sceneSpawn);
+        }
+
         // Обычная загрузка игровой сцены:
         uiManager = FindObjectOfType<UIManager>();
         UpdateTaskUI();
 
-        var sp = GameObject.Find("Spawn_Default");
-        if (sp != null) defaultSpawnPoint = sp.transform;
+        // ищем объект Spawn_Default
+        var defaultSp = GameObject.Find("Spawn_Default");
+        if (defaultSp != null) defaultSpawnPoint = defaultSp.transform;
 
         SubscribeToTask(GetCurrentTaskData());
     }
@@ -94,6 +150,12 @@ public class TaskManager : MonoBehaviour
     void OnDestroy()
     {
         HandleUnsubscribeAll();
+    }
+
+    // helper для сброса флага извне (например, из PlayerController после применения чекпоинта)
+    public void ConsumeContinueMode()
+    {
+        IsContinueMode = false;
     }
 
     public void HandleUnsubscribeAll()
@@ -347,25 +409,63 @@ public class TaskManager : MonoBehaviour
 
     private void OnSceneLoaded_MovePlayer(Scene scene, LoadSceneMode mode)
     {
-        // 1) Телепортируем игрока
-        var sp = GameObject.FindWithTag("SpawnPoint");
-        if (sp != null)
+        Debug.Log($"[TaskManager] OnSceneLoaded_MovePlayer: scene={scene.name}, currentTask={GetCurrentTaskIndex()}");
+
+        // Continue/Checkpoint handling
+        if (IsContinueMode && GameSaveManager.instance != null && GameSaveManager.instance.HasCheckpoint())
+        {
+            string savedScene = GameSaveManager.instance.GetSavedScene();
+            if (savedScene == scene.name)
+            {
+                Vector2 pos = GameSaveManager.instance.LoadCheckpointPosition();
+                var player = FindObjectOfType<PlayerController>();
+                if (player != null)
+                {
+                    Debug.Log($"[TaskManager] MovePlayer (Continue mode) → teleporting to checkpoint pos {pos}");
+                    player.TeleportTo(pos);
+                }
+                else
+                {
+                    Debug.LogWarning("[TaskManager] MovePlayer: player not found to teleport to checkpoint");
+                }
+
+                ConsumeContinueMode();
+                SceneManager.sceneLoaded -= OnSceneLoaded_MovePlayer;
+                return;
+            }
+        }
+
+        // Основной путь: пробуем найти spawn, привязанный к текущей задаче
+        var currentTask = GetCurrentTaskData();
+        Transform spawn = null;
+        if (currentTask != null)
+        {
+            spawn = GetSpawnForTask(currentTask.id, scene.name);
+        }
+
+        if (spawn != null)
         {
             var player = FindObjectOfType<PlayerController>();
             if (player != null)
-                player.TeleportTo(sp.transform.position);
-        }
-        else
-        {
-            Debug.LogWarning($"[TaskManager] Не найден SpawnPoint в сцене {scene.name}");
+            {
+                Debug.Log($"[TaskManager] MovePlayer: teleporting player to spawn for task {GetCurrentTaskIndex()} at {spawn.position}");
+                player.TeleportTo(spawn.position);
+            }
+            else
+            {
+                Debug.LogWarning("[TaskManager] MovePlayer: player not found to teleport");
+            }
+            SceneManager.sceneLoaded -= OnSceneLoaded_MovePlayer;
+            return;
         }
 
-        // 2) Отписываемся, чтобы не ловить это событие повторно
+        // не нашли подходящий spawn — fallback к тегу / default уже выполнялся в GetSpawnForTask,
+        // но мы не хотим телепортировать в generic spawn автоматически при загрузке,
+        // если явно не задано ничего для текущей задачи. --> поэтому здесь просто отписываемся.
+        Debug.Log($"[TaskManager] MovePlayer: no task-specific spawn found for task {currentTask?.id}. No auto-teleport on scene load.");
         SceneManager.sceneLoaded -= OnSceneLoaded_MovePlayer;
-
-        // НИКАКОГО NextTask() здесь больше не делаем!
-        // (Переключение задачи мы сделаем сразу после запуска перехода — см. ниже)
     }
+
 
     private void OnConsoleAccepted()
     {
@@ -504,17 +604,20 @@ public class TaskManager : MonoBehaviour
             NextTask();
     }
 
-    private void OnSceneExitTrigger(string sceneName)
+        private void OnSceneExitTrigger(string sceneName)
     {
         // отписаться, чтобы не дергаться дважды
         SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
 
         Debug.Log($"[TaskManager] SceneExit → loading '{sceneName}'");
+
+        // запомним id задачи, которая инициировала переход — чтобы потом телепортнуть по её спавну
+        _sceneExitInitiatorTaskId = GetCurrentTaskData()?.id ?? -1;
+
         // ставим флаг, что на следующей загрузке надо сделать NextTask
         _returningFromSceneExit = true;
         SceneManager.LoadScene(sceneName);
     }
-
 
     private void OnBackgroundTransition()
     {
@@ -552,6 +655,9 @@ public class TaskManager : MonoBehaviour
         OnTaskChanged?.Invoke(GetCurrentTaskData());
 
         SubscribeToTask(GetCurrentTaskData());
+
+        // применяем модель для новой задачи
+        ApplyModelVariantForTask(GetCurrentTaskData());
 
         Debug.Log($"[TaskManager] Moved to task {currentIndex}");
     }
@@ -600,13 +706,16 @@ public class TaskManager : MonoBehaviour
         // 3) Устанавливаем
         currentIndex = index;
 
-        // Если мы в режиме загрузки из Continue — сбрасываем все автозапуски,
-        // чтобы AutoTrigger снова мог прогреться для сохранённых задач
         if (isLoading)
-            {
-                Debug.Log($"[TaskManager] ContinueGame: Clearing auto‑play states");
-                _autoPlayedStates.Clear();
-            }
+        {
+            Debug.Log($"[TaskManager] ContinueGame: Clearing auto-play states and enabling ContinueMode");
+            _autoPlayedStates.Clear();
+            IsContinueMode = true;
+        }
+        else
+        {
+            IsContinueMode = false;
+        }
 
         // Сохраняем только если не в режиме загрузки
         if (!isLoading)
@@ -618,8 +727,221 @@ public class TaskManager : MonoBehaviour
         UpdateTaskUI();
         // 4) Подписываем заново, но если isLoading — не браним автокатсцены
         SubscribeToTask(GetCurrentTaskData(), suppressAuto: isLoading);
+
+        // применяем модель (важно при загрузке из Continue/SetCurrentTaskIndex)
+        ApplyModelVariantForTask(GetCurrentTaskData());
     }
+
+    public bool HasSpawnForTask(int taskId)
+    {
+        return spawnMappings.Any(s => s.taskId == taskId);
+    }
+
+    public Transform GetSpawnForTask(int taskId, string sceneName = null)
+    {
+        Debug.Log($"[TaskManager] GetSpawnForTask called: taskId={taskId}, sceneName={sceneName}");
+
+        // debug: show spawnMappings
+        if (spawnMappings != null && spawnMappings.Count > 0)
+        {
+            Debug.Log($"[TaskManager] spawnMappings.Count = {spawnMappings.Count}");
+            for (int i = 0; i < spawnMappings.Count; i++)
+            {
+                var m = spawnMappings[i];
+                Debug.Log($"  mapping[{i}]: taskId={m.taskId}, sceneName='{m.sceneName}', spawnObjectName='{m.spawnObjectName}'");
+            }
+        }
+        else
+        {
+            Debug.Log("[TaskManager] spawnMappings empty");
+        }
+
+        // 1) mapping task+scene (priority #1)
+        if (!string.IsNullOrEmpty(sceneName))
+        {
+            var byBoth = spawnMappings.FirstOrDefault(s => s.taskId == taskId
+                                                           && !string.IsNullOrEmpty(s.sceneName)
+                                                           && s.sceneName == sceneName);
+            if (byBoth != null)
+            {
+                Debug.Log($"[TaskManager] Found mapping (task+scene) for task {taskId} -> '{byBoth.spawnObjectName}'");
+                if (!string.IsNullOrEmpty(byBoth.spawnObjectName))
+                {
+                    var go = GameObject.Find(byBoth.spawnObjectName);
+                    if (go != null)
+                    {
+                        Debug.Log($"[TaskManager] Using GameObject '{byBoth.spawnObjectName}' from mapping(task+scene) at {go.transform.position}");
+                        return go.transform;
+                    }
+                    Debug.LogWarning($"[TaskManager] mapping(task+scene) exists but GameObject '{byBoth.spawnObjectName}' not found in scene '{sceneName}' (name mismatch or inactive)");
+                }
+                else
+                {
+                    Debug.LogWarning($"[TaskManager] mapping(task+scene) for task {taskId} has empty spawnObjectName");
+                }
+            }
+        }
+
+        // 2) mapping task-only (priority #2)
+        var byTask = spawnMappings.FirstOrDefault(s => s.taskId == taskId && string.IsNullOrEmpty(s.sceneName));
+        if (byTask != null)
+        {
+            Debug.Log($"[TaskManager] Found mapping (task-only) for task {taskId} -> '{byTask.spawnObjectName}'");
+            if (!string.IsNullOrEmpty(byTask.spawnObjectName))
+            {
+                var go2 = GameObject.Find(byTask.spawnObjectName);
+                if (go2 != null)
+                {
+                    Debug.Log($"[TaskManager] Using GameObject '{byTask.spawnObjectName}' from mapping(task-only) at {go2.transform.position}");
+                    return go2.transform;
+                }
+                Debug.LogWarning($"[TaskManager] mapping(task-only) exists but GameObject '{byTask.spawnObjectName}' not found in scene '{sceneName}'");
+            }
+            else
+            {
+                Debug.LogWarning($"[TaskManager] mapping(task-only) for task {taskId} has empty spawnObjectName");
+            }
+        }
+
+        // 3) SceneSpawnPoint компоненты, зарегистрированные в этой сцене (priority #3)
+        if (_sceneSpawnPoints != null && _sceneSpawnPoints.Count > 0)
+        {
+            Debug.Log($"[TaskManager] _sceneSpawnPoints.Count = {_sceneSpawnPoints.Count}");
+            foreach (var sp in _sceneSpawnPoints)
+            {
+                if (sp == null) continue;
+                Debug.Log($"  SceneSpawnPoint: name='{sp.gameObject.name}', taskId={sp.taskId}, sceneName='{sp.sceneName}', pos={sp.transform.position}, active={sp.gameObject.activeSelf}");
+            }
+
+            var scenePoint = _sceneSpawnPoints
+                .FirstOrDefault(s => s != null
+                                     && s.taskId == taskId
+                                     && (string.IsNullOrEmpty(s.sceneName) || s.sceneName == sceneName)
+                                     && s.gameObject.activeInHierarchy);
+            if (scenePoint != null)
+            {
+                Debug.Log($"[TaskManager] Using SceneSpawnPoint component for task {taskId} -> '{scenePoint.gameObject.name}' at {scenePoint.transform.position}");
+                return scenePoint.transform;
+            }
+        }
+        else
+        {
+            Debug.Log("[TaskManager] _sceneSpawnPoints empty");
+        }
+
+        // 4) fallback: объекты с тегом SpawnPoint (берём первый и логируем все)
+        var spObjs = GameObject.FindGameObjectsWithTag("SpawnPoint");
+        if (spObjs != null && spObjs.Length > 0)
+        {
+            Debug.Log($"[TaskManager] Found {spObjs.Length} GameObject(s) with tag 'SpawnPoint':");
+            for (int i = 0; i < spObjs.Length; i++)
+                Debug.Log($"  [{i}] name='{spObjs[i].name}', pos={spObjs[i].transform.position}, activeSelf={spObjs[i].activeSelf}");
+            Debug.Log($"[TaskManager] Using scene SpawnPoint tag (first) at {spObjs[0].transform.position}");
+            return spObjs[0].transform;
+        }
+        else
+        {
+            Debug.Log("[TaskManager] No GameObject with tag 'SpawnPoint' found in scene");
+        }
+
+        // 5) last resort — defaultSpawnPoint field
+        if (defaultSpawnPoint != null)
+        {
+            Debug.Log($"[TaskManager] Using defaultSpawnPoint field at {defaultSpawnPoint.position}");
+            return defaultSpawnPoint;
+        }
+
+        Debug.Log($"[TaskManager] No spawn found for task {taskId}, scene {sceneName}");
+        return null;
+    }
+
+
+    // helper to avoid possible null exceptions when printing _sceneSpawnPoints
+    private IEnumerable<SceneSpawnPoint> _scene_spawn_points_safe()
+    {
+        return _sceneSpawnPoints ?? Enumerable.Empty<SceneSpawnPoint>();
+    }
+
+    // Позволяет PlayerController применить отложенный телепорт (если он существует)
+    public void TryApplyDeferredSpawnToPlayer(PlayerController player)
+    {
+        if (!_hasDeferredSpawn || player == null) return;
+        Debug.Log($"[TaskManager] Applying deferred spawn to player at {_deferredSpawnPosition}");
+        player.TeleportTo(_deferredSpawnPosition);
+        _hasDeferredSpawn = false;
+    }
+
+    public Transform GetSpawnForCurrentTask()
+    {
+        var t = GetCurrentTaskData();
+        if (t == null) return null;
+        return GetSpawnForTask(t.id, SceneManager.GetActiveScene().name);
+    }
+
     public TaskData GetCurrentTaskData() => tasks.Length > 0 ? tasks[currentIndex] : null;
+
+    /// <summary>
+    /// Решает, нужно ли на этой задаче использовать альтернативную модель.
+    /// Здесь просто пример: вернёт true если id совпадает с нужными. 
+    /// Заменяй список id на свои значения (например: 20,21 или 32 и т.д.).
+    /// </summary>
+    public bool ShouldUseAltModel(TaskData task)
+    {
+        if (task == null) return false;
+        int[] altIds = new int[] { 34, 35, 36, 37, 38, 39, 40, 41, 42 };
+        return altIds.Contains(task.id);
+    }
+
+    /// <summary>
+    /// Попытаться применить модель для указанной задачи (если Player уже есть).
+    /// </summary>
+    public void ApplyModelVariantForTask(TaskData task)
+    {
+        bool useAlt = ShouldUseAltModel(task);
+        if (PlayerController.instance != null)
+        {
+            PlayerController.instance.UseAltController(useAlt);
+        }
+        else
+        {
+            Debug.Log($"[TaskManager] PlayerController.instance == null; ApplyModelVariant deferred (useAlt={useAlt}). Player will set in Start().");
+        }
+    }
+
+    public void RegisterSceneSpawnPoint(SceneSpawnPoint sp)
+    {
+        if (sp == null) return;
+        if (!_sceneSpawnPoints.Contains(sp))
+        {
+            _sceneSpawnPoints.Add(sp);
+            Debug.Log($"[TaskManager] RegisterSceneSpawnPoint: registered '{sp.gameObject.name}' taskId={sp.taskId} sceneName='{sp.sceneName}'");
+        }
+    }
+
+    public void UnregisterSceneSpawnPoint(SceneSpawnPoint sp)
+    {
+        if (sp == null) return;
+        if (_sceneSpawnPoints.Contains(sp))
+        {
+            _sceneSpawnPoints.Remove(sp);
+            Debug.Log($"[TaskManager] UnregisterSceneSpawnPoint: unregistered '{sp.gameObject.name}'");
+        }
+    }
+
+    // helper: очистка списка при смене сцены (чтобы не держать старые точки)
+    private void ClearSceneSpawnPoints()
+    {
+        if (_sceneSpawnPoints != null && _sceneSpawnPoints.Count > 0)
+            Debug.Log($"[TaskManager] ClearSceneSpawnPoints: clearing {_sceneSpawnPoints.Count} entries");
+        _sceneSpawnPoints.Clear();
+    }
+
+    // Замена метода _scene_spawn_points_safe() — сделаем понятное имя:
+    private IEnumerable<SceneSpawnPoint> GetSceneSpawnPointsSafe()
+    {
+        return _sceneSpawnPoints ?? Enumerable.Empty<SceneSpawnPoint>();
+    }
+
 }
 
 [Serializable]
@@ -644,4 +966,12 @@ public class TaskData
 public class TaskList
 {
     public TaskData[] tasks;
+}
+
+[Serializable]
+public class SpawnMapping
+{
+    public int taskId;            // задача, для которой использовать этот spawn
+    public string sceneName;      // опционально: ограничиваем конкретной сценой
+    public string spawnObjectName; // имя GameObject в сцене (например "Spawn_Task13")
 }

@@ -194,3 +194,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 10
+  defaultController: {fileID: 9100000, guid: 330c94dfc2c62514f8edbf1d75f53ee0, type: 2}
+  altOverrideController: {fileID: 22100000, guid: 530358780d007d549b1b137c89205452, type: 2}
