@@ -419,6 +419,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameSceneName: School
+  continueButton: {fileID: 1672720104}
 --- !u!4 &431636559
 Transform:
   m_ObjectHideFlags: 0

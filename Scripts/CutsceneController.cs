@@ -5,6 +5,7 @@ using TMPro;
 public class CutsceneController : MonoBehaviour
 {
     public static CutsceneController instance;
+    public static bool IsCutscenePlaying { get; private set; } = false;
 
     [Header("UI элементы")]
     public GameObject cutscenePanel;
@@ -49,6 +50,7 @@ public class CutsceneController : MonoBehaviour
 
     public void StartCutsceneForCurrentState(System.Action onComplete = null)
     {
+        IsCutscenePlaying = true;
         PlayerController.InputBlocked = true;
 
         this.onCompleteCallback = onComplete;
@@ -59,6 +61,8 @@ public class CutsceneController : MonoBehaviour
 
         if (lines == null || lines.Length == 0)
         {
+            IsCutscenePlaying = false;
+            PlayerController.InputBlocked = false;
             onCompleteCallback?.Invoke();
             return;
         }
@@ -100,7 +104,6 @@ public class CutsceneController : MonoBehaviour
 
         var L = lines[currentIndex];
         dialogueText.text = L.text;
-        Debug.Log($"Text set to: '{dialogueText.text}', Active: {dialogueText.gameObject.activeInHierarchy}, Color: {dialogueText.color}, RectTransform: {dialogueText.rectTransform.anchoredPosition}");
         speakerNameText.text = L.characterName;
 
         if (L.avatar != null)
@@ -113,7 +116,6 @@ public class CutsceneController : MonoBehaviour
             portraitImage.gameObject.SetActive(false);
         }
 
-        // **новая часть**: обновляем фон под каждую строку
         if (L.background != null)
         {
             backgroundImage.sprite = L.background;
@@ -124,12 +126,12 @@ public class CutsceneController : MonoBehaviour
             backgroundImage.gameObject.SetActive(false);
         }
 
-        Debug.Log($"[CutsceneController] Showing line {currentIndex + 1}/{lines.Length}: {L.text}");
         currentIndex++;
     }
 
     private void EndCutscene()
     {
+        IsCutscenePlaying = false;
         PlayerController.InputBlocked = false;
 
         Debug.Log("[CutsceneController] EndCutscene");
@@ -139,7 +141,6 @@ public class CutsceneController : MonoBehaviour
         if (disablePlayer && playerController != null)
             playerController.enabled = true;
 
-        // Вызываем колбэк, чтобы TaskManager мог продолжить
         onCompleteCallback?.Invoke();
         onCompleteCallback = null;
     }

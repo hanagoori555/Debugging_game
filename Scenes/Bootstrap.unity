@@ -2047,9 +2047,27 @@ MonoBehaviour:
   defaultSpawnPoint: {fileID: 0}
   tasks: []
   spawnMappings:
+  - taskId: 37
+    sceneName: Forest
+    spawnObjectName: SpawnPointSchool
   - taskId: 39
     sceneName: School
     spawnObjectName: SpawnPointBattle
+  - taskId: 41
+    sceneName: School
+    spawnObjectName: SpawnPointBattle
+  - taskId: 42
+    sceneName: School
+    spawnObjectName: SpawnPointBattle
+  variant1TaskIds: 23000000240000002500000026000000
+  variant2TaskIds: 2700000028000000290000002a000000
+  gameplayScenes:
+  - School
+  - Forest
+  - Home
+  - DarkWorld
+  - Zone
+  - Battle
 --- !u!4 &1179079214
 Transform:
   m_ObjectHideFlags: 0
@@ -2439,7 +2457,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 8f67f0b2c6f517945b0b2f9e95bd3943, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a6d64286d40d61b4fb70222e8ba83bcd, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2928,7 +2946,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0

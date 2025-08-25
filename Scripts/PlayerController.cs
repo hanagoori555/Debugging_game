@@ -16,6 +16,15 @@ public class PlayerController : MonoBehaviour
     // Если не заполнено в инспекторе, defaultController заполняется из animator.runtimeAnimatorController на Start()
     public RuntimeAnimatorController defaultController;
     public AnimatorOverrideController altOverrideController;
+    public AnimatorOverrideController altOverrideController2;
+
+    // --- persistent state between rebinds / model swaps ---
+    private float _savedDirection = 0f;
+    private bool _hasSavedDirection = false;
+    private bool _savedIsWalking = false;
+    private bool _hasSavedIsWalking = false;
+    private Vector3 _savedPosition = Vector3.zero;
+    private bool _hasSavedPosition = false;
 
     void Awake()
     {
@@ -44,8 +53,8 @@ public class PlayerController : MonoBehaviour
             if (TaskManager.instance != null)
             {
                 var task = TaskManager.instance.GetCurrentTaskData();
-                bool useAlt = TaskManager.instance.ShouldUseAltModel(task);
-                UseAltController(useAlt);
+                int variant = TaskManager.instance.GetModelVariantForTask(task); // 0/1/2
+                SetModelVariant(variant);
             }
         }
 
@@ -133,6 +142,54 @@ public class PlayerController : MonoBehaviour
         else transform.position = pos;
     }
 
+    /// <summary>
+    /// Сохранить текущую позицию и параметры аниматора (Direction/isWalking) во временные поля.
+    /// Вызвать перед операциями, которые могут перепривязать/пересоздать аниматор или перезаписать позицию.
+    /// </summary>
+    public void SavePersistentState()
+    {
+        if (animator != null)
+        {
+            // Если параметров нет — Get... вернёт 0/false — это ок
+            _savedDirection = animator.GetFloat("Direction");
+            _hasSavedDirection = true;
+            _savedIsWalking = animator.GetBool("isWalking");
+            _hasSavedIsWalking = true;
+        }
+        _savedPosition = transform.position;
+        _hasSavedPosition = true;
+        Debug.Log($"[PlayerController] SavePersistentState dir={_savedDirection} walking={_savedIsWalking} pos={_savedPosition}");
+    }
+
+    /// <summary>
+    /// Восстановить ранее сохранённые параметры (если были сохранены).
+    /// </summary>
+    public void RestorePersistentState()
+    {
+        if (animator != null)
+        {
+            if (_hasSavedDirection)
+            {
+                animator.SetFloat("Direction", _savedDirection);
+            }
+            if (_hasSavedIsWalking)
+            {
+                animator.SetBool("isWalking", _savedIsWalking);
+            }
+        }
+        if (_hasSavedPosition)
+        {
+            if (rb != null) rb.position = _savedPosition;
+            else transform.position = _savedPosition;
+        }
+
+        _hasSavedDirection = false;
+        _hasSavedIsWalking = false;
+        _hasSavedPosition = false;
+        Debug.Log("[PlayerController] RestorePersistentState applied");
+    }
+
+
     void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Boundary") ||
@@ -142,11 +199,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Переключает аниматор на override (альт) или на дефолт.
-    /// Вызывать каждый раз, когда нужно сменить визуалку.
-    /// </summary>
-    public void UseAltController(bool useAlt)
+    public void SetModelVariant(int variant)
     {
         if (animator == null)
         {
@@ -154,33 +207,66 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        if (useAlt)
+        // Сохраним текущие параметры аниматора, чтобы не потерять направление/позу
+        float prevDirection = animator.GetFloat("Direction");
+        bool prevIsWalking = animator.GetBool("isWalking");
+
+        switch (variant)
         {
-            if (altOverrideController != null)
-            {
-                animator.runtimeAnimatorController = altOverrideController;
-                Debug.Log("[PlayerController] Applied alt override controller");
-            }
-            else
-            {
-                Debug.LogWarning("[PlayerController] altOverrideController is null - cannot apply alt model");
-            }
-        }
-        else
-        {
-            if (defaultController != null)
-            {
-                animator.runtimeAnimatorController = defaultController;
-                Debug.Log("[PlayerController] Restored default controller");
-            }
-            else
-            {
-                Debug.LogWarning("[PlayerController] defaultController is null - cannot restore default model");
-            }
+            case 0:
+                if (defaultController != null)
+                {
+                    animator.runtimeAnimatorController = defaultController;
+                    Debug.Log("[PlayerController] Applied default controller (variant 0)");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerController] defaultController is null - cannot restore default model");
+                }
+                break;
+
+            case 1:
+                if (altOverrideController != null)
+                {
+                    animator.runtimeAnimatorController = altOverrideController;
+                    Debug.Log("[PlayerController] Applied alt override controller (variant 1)");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerController] altOverrideController is null - cannot apply variant 1");
+                }
+                break;
+
+            case 2:
+                if (altOverrideController2 != null)
+                {
+                    animator.runtimeAnimatorController = altOverrideController2;
+                    Debug.Log("[PlayerController] Applied alt override controller 2 (variant 2)");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerController] altOverrideController2 is null - cannot apply variant 2");
+                }
+                break;
+
+            default:
+                Debug.LogWarning($"[PlayerController] Unknown variant {variant} - keeping current controller");
+                break;
         }
 
-        // Принудительно "перепривяжем" аниматор, чтобы изменения вступили в силу немедленно
+        // Rebind сбрасывает состояние аниматора — сразу восстановим нужные параметры
         animator.Rebind();
         animator.Update(0f);
+
+        // Восстанавливаем то, что было (Direction / isWalking)
+        animator.SetFloat("Direction", prevDirection);
+        animator.SetBool("isWalking", prevIsWalking);
+    }
+
+
+    /// Сохраняем совместимость
+    public void UseAltController(bool useAlt)
+    {
+        SetModelVariant(useAlt ? 1 : 0);
     }
 }

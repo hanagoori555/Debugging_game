@@ -2,12 +2,13 @@
 using TMPro;
 using UnityEngine.SceneManagement;
 
+[DefaultExecutionOrder(-100)] // выполнить раньше большинства других Update'ов
 public class UIManager : MonoBehaviour
 {
-    public static UIManager instance;     // <-- 1) singleton-поле
+    public static UIManager instance;
 
     [Header("Панель паузы (может быть активирована)")]
-    public GameObject pauseMenuPanel; // панель с кнопками Resume/Exit
+    public GameObject pauseMenuPanel;
 
     [Header("Ссылка на кнопку 'Пауза'")]
     public UnityEngine.UI.Button pauseButton;
@@ -16,9 +17,9 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI taskText;
 
     private bool isPaused = false;
+
     void Awake()
     {
-        // <-- 2) и 3) проверка и DontDestroyOnLoad
         if (instance == null)
         {
             instance = this;
@@ -30,32 +31,108 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        // (Опционально) сразу выключить панель
         if (pauseMenuPanel != null)
             pauseMenuPanel.SetActive(false);
     }
 
     void Start()
     {
-        // Подписываемся на нажатие кнопки
-        pauseButton.onClick.AddListener(TogglePause);
+        if (pauseButton != null)
+        {
+            pauseButton.onClick.RemoveAllListeners();
+            pauseButton.onClick.AddListener(TogglePause);
+        }
     }
 
-    /// <summary>
-    /// Включает/выключает паузу
-    /// </summary>
+    void Update()
+    {
+        // 1) скрытие визуала — принудительно закрываем панель и делаем кнопку неинтерактивной
+        if (PauseGuard.IsHiddenVisual)
+        {
+            // если визуально скрываем — гарантированно закрыть любую открытую панель
+            if (isPaused)
+            {
+                Debug.Log("[UIManager] Pause forcibly closed due to PauseGuard.HideVisual.");
+                ClosePause();
+            }
+
+            if (pauseButton != null)
+                pauseButton.interactable = false;
+
+            // в режиме HideVisual ESC не должен делать ничего
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Debug.Log("[UIManager] ESC press ignored — PauseGuard.HideVisual active.");
+            }
+
+            return;
+        }
+
+        // обычный путь: можно ли вообще открывать паузу сейчас
+        bool canOpen = PauseGuard.CanOpenPause();
+
+        if (pauseButton != null)
+            pauseButton.interactable = canOpen;
+
+        // Если пауза открыта, но guard запретил — закроем паузу немедленно
+        if (!canOpen && isPaused)
+        {
+            Debug.Log("[UIManager] Pause forcibly closed due to PauseGuard (cutscene/dialogue/input blocked).");
+            ClosePause();
+        }
+
+        // Перехватываем ESC
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            // если пауза уже открыта — всегда закроем её
+            if (isPaused)
+            {
+                ClosePause();
+                return;
+            }
+
+            // если пауза закрыта — откроем только если можно
+            if (canOpen)
+            {
+                TogglePause();
+            }
+            else
+            {
+                Debug.Log("[UIManager] ESC press ignored — PauseGuard blocks opening pause (cutscene/dialogue/input blocked).");
+            }
+        }
+    }
+
     public void TogglePause()
     {
+        // Дополнительная проверка: не дадим открыть паузу, если PauseGuard запрещает
+        if (!PauseGuard.CanOpenPause())
+        {
+            Debug.Log("[UIManager] TogglePause blocked by PauseGuard.");
+            // Если пауза уже открыта (маловероятно), закроем её как запасной вариант
+            if (isPaused)
+                ClosePause();
+            return;
+        }
+
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
         if (pauseMenuPanel != null)
             pauseMenuPanel.SetActive(isPaused);
+
+        Debug.Log($"[UIManager] TogglePause -> isPaused={isPaused}");
     }
 
-    /// <summary>
-    /// Вызывается из TaskManager для обновления текста задачи.
-    /// Если task == null или пустая строка, скрываем taskText.
-    /// </summary>
+    private void ClosePause()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(false);
+
+        Debug.Log("[UIManager] ClosePause executed.");
+    }
+
     public void SetTask(string task)
     {
         if (taskText == null)
@@ -66,7 +143,6 @@ public class UIManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(task))
         {
-            // Если описание пустое, скрываем текстовую строку
             taskText.gameObject.SetActive(false);
         }
         else
@@ -76,25 +152,20 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Вызывается при клике на кнопку "Main Menu" в паузе
-    /// </summary>
     public void GoToMainMenu()
     {
-        // Снимаем паузу и прячем панель
-        isPaused = false;
-        Time.timeScale = 1f;
-        // Загружаем сцену главного меню
+        if (!PauseGuard.CanOpenPause())
+        {
+            Debug.Log("[UIManager] GoToMainMenu blocked by PauseGuard.");
+            return;
+        }
+
+        ClosePause();
         SceneManager.LoadScene("MainMenu");
     }
 
-    /// <summary>
-    /// Скрывает панель паузы (без изменения Time.timeScale).
-    /// </summary>
     public void HidePauseMenu()
     {
-        isPaused = false;
-        if (pauseMenuPanel != null)
-            pauseMenuPanel.SetActive(false);
+        ClosePause();
     }
 }

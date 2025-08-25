@@ -22,6 +22,15 @@ public class TaskManager : MonoBehaviour
     [Header("Task -> Spawn mappings (optional)")]
     public List<SpawnMapping> spawnMappings = new List<SpawnMapping>();
 
+    [Header("Model variant task IDs (configure in inspector)")]
+    // Если задача входит в variant1TaskIds -> применяем variant 1
+    // Если входит в variant2TaskIds -> применяем variant 2 (приоритетнее)
+    public List<int> variant1TaskIds = new List<int>() { 35, 36, 37, 38};
+    public List<int> variant2TaskIds = new List<int>() { 39, 40, 41, 42 };
+
+    [Header("Gameplay scenes (used to block cutscenes in menus)")]
+    public List<string> gameplayScenes = new List<string> { "School", "Forest", "Home", "DarkWorld", "Zone", "Battle" };
+
     private UIManager uiManager;
     private int currentIndex = 0;
     private string _previousGameScene;
@@ -29,6 +38,9 @@ public class TaskManager : MonoBehaviour
     private bool _isRhythmRunning = false;
     private bool _returningFromRhythm = false;
     private bool _rhythmDone = false;
+    private int _subscribedTaskId = -1;
+    // флаг: если >=0 — id задачи, для которой единожды надо подавить катсцену
+    private int _suppressCutsceneForTaskId = -1;
     // true, если мы только что перешли по SceneExit и ждём загрузки новой сцены
     private bool _returningFromSceneExit = false;
     // true, если SetCurrentTaskIndex(..., isLoading:true) вызван (Continue из меню)
@@ -49,8 +61,7 @@ public class TaskManager : MonoBehaviour
             instance = this;
             DontDestroyOnLoad(gameObject);
             LoadTasksFromJson();
-            // **загружаем сохранённый индекс задачи (если есть)**
-            currentIndex = GameSaveManager.instance?.LoadCurrentTask() ?? 0;
+            currentIndex = 0;
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
@@ -59,12 +70,19 @@ public class TaskManager : MonoBehaviour
         }
     }
 
+    private bool IsGameplayScene(string name)
+    {
+        return gameplayScenes != null && gameplayScenes.Contains(name);
+    }
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"[TaskManager] OnSceneLoaded: scene={scene.name}, currentTaskIndex={currentIndex}, currentTaskId={(GetCurrentTaskData()?.id.ToString() ?? "null")}");
+
         // 1) Если мы только что вернулись из ритма — делаем NextTask и выходим
         if (_returningFromRhythm)
         {
+            Debug.Log("[TaskManager] OnSceneLoaded: returning from rhythm -> NextTask()");
             _returningFromRhythm = false;
             PlayerController.InputBlocked = false;
             NextTask();
@@ -74,6 +92,7 @@ public class TaskManager : MonoBehaviour
         // 2) возврат по выходу из сцены (SceneExit)
         if (_returningFromSceneExit)
         {
+            Debug.Log("[TaskManager] OnSceneLoaded: handling returningFromSceneExit");
             _returningFromSceneExit = false;
 
             int initiatorId = _sceneExitInitiatorTaskId;
@@ -83,7 +102,7 @@ public class TaskManager : MonoBehaviour
             {
                 Debug.Log($"[TaskManager] Returned from SceneExit initiated by task {initiatorId}. Trying to teleport for initiating task before NextTask.");
 
-                // попробуем найти спавн для задачи-инициатора (та самая логика, что у вас уже есть в GetSpawnForTask)
+                // попробуем найти спавн для задачи-инициатора
                 var spawn = GetSpawnForTask(initiatorId, scene.name);
 
                 if (spawn != null)
@@ -108,28 +127,35 @@ public class TaskManager : MonoBehaviour
                 }
             }
 
-            // теперь уже переключаемся на следующую задачу, как и было задумано
+            // теперь переключаемся на следующую задачу (как было задумано)
             NextTask();
-
-            // (!) не return, чтобы подписать новую задачу на этот же кадр
+            // (!) не return — чтобы подписать новую задачу на этом же кадре
         }
 
+        // Если не игровая сцена — ничего не делаем (чтобы не запускать катсцены/авто-диалоги в меню).
+        if (!IsGameplayScene(scene.name))
+        {
+            Debug.Log($"[TaskManager] Scene '{scene.name}' not a gameplay scene -> skipping task subscription.");
+            return;
+        }
 
         // 3) Если загрузилась сама сцена "Battle" — ничего не трогаем
         if (scene.name == "Battle")
+        {
+            Debug.Log("[TaskManager] Battle scene loaded -> skip normal scene subscription.");
             return;
+        }
 
-        // Очистим старые регистрационные спавнпоинты и позволим новым зарегистрироваться
+        // Очистим старые регистрационные спавнпоинты и позвольм новым зарегистрироваться
         ClearSceneSpawnPoints();
 
-        // затем можно найти вручную все SceneSpawnPoint в сцене, если они уже созданы:
-        // (если SceneSpawnPoint выполняет Register на Awake — это не обязательно, но страховка)
+        // Подстраховка: зарегистрировать уже существующие SceneSpawnPoint'ы в сцене
         foreach (var sceneSpawn in FindObjectsOfType<SceneSpawnPoint>())
         {
             RegisterSceneSpawnPoint(sceneSpawn);
         }
 
-        // Обычная загрузка игровой сцены:
+        // Обычная загрузка игровой сцены: UI, обновление таска и т.д.
         uiManager = FindObjectOfType<UIManager>();
         UpdateTaskUI();
 
@@ -137,9 +163,17 @@ public class TaskManager : MonoBehaviour
         var defaultSp = GameObject.Find("Spawn_Default");
         if (defaultSp != null) defaultSpawnPoint = defaultSp.transform;
 
-        SubscribeToTask(GetCurrentTaskData());
+        // Если мы сейчас в ContinueMode, то SetCurrentTaskIndex(...) уже подписал задачу в suppressAuto режиме.
+        // Не подписываем заново, чтобы не снять suppressAuto/не запустить автосцену повторно.
+        if (IsContinueMode)
+        {
+            Debug.Log("[TaskManager] OnSceneLoaded: ContinueMode active -> skipping SubscribeToTask (already handled).");
+        }
+        else
+        {
+            SubscribeToTask(GetCurrentTaskData());
+        }
     }
-
 
     void Start()
     {
@@ -168,32 +202,79 @@ public class TaskManager : MonoBehaviour
 
     public void SubscribeToTask(TaskData task, bool suppressAuto = false)
     {
-        if (task.id == 31 || task.id == 40)
-            _rhythmDone = false;
         if (task == null) return;
-        if (suppressAuto && task.triggerType == "Auto")
+
+        // Защита от повторной подписки
+        if (_subscribedTaskId == task.id)
         {
-            // только подписка на интеракт или SceneExit дальше
-            if (task.triggerType == "Interact")
-                Interactable.OnAnyInteract += OnInteractTrigger;
-            else if (task.triggerType == "SceneExit")
-                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+            Debug.Log($"[TaskManager] SubscribeToTask: already subscribed to task {task.id}, skipping.");
             return;
         }
 
+        // special: reset rhythm flags for those tasks
+        if (task.id == 31 || task.id == 40)
+            _rhythmDone = false;
+
+        // если мы в режиме Continue (isLoading) — НЕ дергаем авто/катсцены/ритм,
+        // а только делаем "минимальную" подписку, чтобы игрок мог взаимодействовать.
+        if (suppressAuto)
+        {
+            Debug.Log($"[TaskManager] SubscribeToTask(suppressAuto=true) for task {task.id}: minimal subscription only.");
+
+            // tutorial (id==0) — не запускать при Continue
+            if (task.id == 0)
+            {
+                Debug.Log("[TaskManager] Suppressing tutorial on Continue.");
+                return; // не помечаем как подписанное
+            }
+
+            // минимальная подписка: только те триггеры, которые должны сработать в момент Continue
+            switch (task.triggerType)
+            {
+                case "Interact":
+                    Interactable.OnAnyInteract += OnInteractTrigger;
+                    break;
+                case "SceneExit":
+                    SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+                    break;
+                case "Rhythm":
+                    Debug.Log($"[TaskManager] Suppressing Rhythm start for task {task.id} during Continue.");
+                    break;
+                case "Auto":
+                case "SceneAuto":
+                case "BackgroundTransition":
+                    Debug.Log($"[TaskManager] Suppressing automatic trigger '{task.triggerType}' for task {task.id} during Continue.");
+                    break;
+                default:
+                    Debug.Log($"[TaskManager] Unknown trigger '{task.triggerType}' for task {task.id} in suppressAuto mode.");
+                    break;
+            }
+
+            // пометить, что для этой задачи выполнена минимальная подписка
+            _subscribedTaskId = task.id;
+            return;
+        }
+
+        // --- обычный путь (не continue) ---
+
+        // tutorial
         if (task.id == 0)
         {
+            _subscribedTaskId = task.id;
             FindObjectOfType<MainGameController>()?.StartTutorial();
             return;
         }
 
-        // Для задач с катсценой
+        // Для задач с катсценой — запускаем катсцену (если сцена игровая, проверка внутри StartCutsceneForTask)
         if (task.hasCutscene)
         {
+            // Помечаем, что начали обработку этой задачи (чтобы не дублировать)
+            _subscribedTaskId = task.id;
+
             StartCutsceneForTask(task, () => {
                 Debug.Log($"[TaskManager] Cutscene finished for task {task.id}");
 
-                // Подписываемся на OnAnyInteract только после завершения катсцены
+                // Подписываемся на OnAnyInteract только после завершения катсцены (как и было)
                 if (task.triggerType == "Interact")
                 {
                     Interactable.OnAnyInteract += OnInteractTrigger;
@@ -207,13 +288,62 @@ public class TaskManager : MonoBehaviour
         }
         else
         {
-            // Для задач без катсцены стандартная подписка
+            // Для задач без катсцены — стандартная подписка
+            _subscribedTaskId = task.id;
             SubscribeToTaskTrigger(task);
         }
     }
 
     private void StartCutsceneForTask(TaskData task, Action onCutsceneComplete)
     {
+        // 0) если для этой задачи задано одноразовое подавление — сработаем как в suppressAuto:
+        if (_suppressCutsceneForTaskId == task.id)
+        {
+            Debug.Log($"[TaskManager] Suppressing cutscene for task {task.id} due to continue suppression (one-shot).");
+            // очистим флаг (одна подмена)
+            _suppressCutsceneForTaskId = -1;
+
+            // ведём себя как при suppressAuto: минимально подписываемся в зависимости от типа триггера
+            if (task.triggerType == "Interact")
+                Interactable.OnAnyInteract += OnInteractTrigger;
+            else if (task.triggerType == "SceneExit")
+                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+            // Для Auto/SceneAuto/BackgroundTransition — ничего не делаем (они будут запускаться через TriggerAutoAfterLoad/TryRunAuto...)
+            return;
+        }
+
+        // Если мы в режиме Continue, НЕ запускаем катсцены автоматически.
+        // Вместо этого делаем минимальную подписку (как при suppressAuto).
+        if (IsContinueMode)
+        {
+            Debug.Log($"[TaskManager] Skipping cutscene for task {task.id} because ContinueMode is active.");
+            if (task.triggerType == "Interact")
+                Interactable.OnAnyInteract += OnInteractTrigger;
+            else if (task.triggerType == "SceneExit")
+                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+            // Если это Auto и был cutscene — не продвигаем индекс автоматически на Continue.
+            return;
+        }
+
+        // Не позволяем стартовать катсцену в меню/на не-игровой сцене.
+        var active = SceneManager.GetActiveScene().name;
+        if (!IsGameplayScene(active))
+        {
+            Debug.Log($"[TaskManager] Not starting cutscene for task {task.id} because current scene '{active}' is not a gameplay scene.");
+            if (task.triggerType == "Interact")
+                Interactable.OnAnyInteract += OnInteractTrigger;
+            else if (task.triggerType == "SceneExit")
+                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+            return;
+        }
+
+        if (CutsceneController.instance == null)
+        {
+            Debug.LogWarning($"[TaskManager] CutsceneController.instance == null, cannot start cutscene for task {task.id}");
+            onCutsceneComplete?.Invoke();
+            return;
+        }
+
         Debug.Log($"[TaskManager] Starting cutscene for task {task.id}");
         CutsceneController.instance.StartCutsceneForCurrentState(() => {
             Debug.Log($"[TaskManager] Cutscene finished for task {task.id}");
@@ -224,6 +354,18 @@ public class TaskManager : MonoBehaviour
 
     private void SubscribeToTaskTrigger(TaskData task)
     {
+        // Защита от срабатывания триггеров при ContinueMode
+        if (IsContinueMode)
+        {
+            Debug.Log($"[TaskManager] SubscribeToTaskTrigger: skipping automatic triggers for task {task.id} because ContinueMode active.");
+            // Но подписываем минимально интеракт/sceneExit, чтобы игрок мог взаимодействовать
+            if (task.triggerType == "Interact")
+                Interactable.OnAnyInteract += OnInteractTrigger;
+            else if (task.triggerType == "SceneExit")
+                SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
+            return;
+        }
+
         switch (task.triggerType)
         {
             case "Auto":
@@ -493,12 +635,23 @@ public class TaskManager : MonoBehaviour
                 StageManager.OnBackgroundTransition -= HandleBackgroundTransition;
                 break;
         }
+
+        // Сбрасываем пометку подписки, если это та же задача
+        if (task != null && _subscribedTaskId == task.id)
+            _subscribedTaskId = -1;
     }
 
     private IEnumerator AutoTriggerCoroutine(TaskData task)
     {
         Debug.Log($"[TaskManager] ➤ AutoTriggerCoroutine START for task {task.id}, hasCutscene={task.hasCutscene}");
         yield return null;
+
+        // Если мы в режиме Continue — не запускаем авто-обработку, чтобы она не продвинула задачи
+        if (IsContinueMode)
+        {
+            Debug.Log($"[TaskManager] ➤ AutoTrigger skipped for task {task.id} because ContinueMode is active.");
+            yield break;
+        }
 
         if (_autoPlayedStates.Contains(task.id))
         {
@@ -507,7 +660,6 @@ public class TaskManager : MonoBehaviour
         }
         _autoPlayedStates.Add(task.id);
 
-        // Если это Auto-задача с катсценой - пропускаем стандартную обработку
         if (task.hasCutscene)
         {
             Debug.Log($"[TaskManager] ➤ AutoTrigger skipped: hasCutscene for task {task.id}");
@@ -533,6 +685,36 @@ public class TaskManager : MonoBehaviour
 
         Debug.Log($"[TaskManager] ➤ AutoTrigger: no lines, calling NextTask for task {task.id}");
         NextTask();
+    }
+
+    /// <summary>
+    /// Попытаться запустить авто-поведение для текущей задачи (Auto / SceneAuto).
+    /// Вызывается после того, как мы применили continue и сняли IsContinueMode.
+    /// </summary>
+    public void TryRunAutoForCurrentTaskAfterContinue()
+    {
+        var task = GetCurrentTaskData();
+        if (task == null) return;
+
+        // Если задача имеет катсцену — мы НЕ хотим её стартовать при Continue
+        if (task.hasCutscene)
+        {
+            Debug.Log($"[TaskManager] TryRunAutoForCurrentTaskAfterContinue: current task {task.id} hasCutscene -> skip auto-run (cutscene suppressed).");
+            return;
+        }
+
+        if (task.triggerType == "Auto")
+        {
+            StartCoroutine(AutoTriggerCoroutine(task));
+        }
+        else if (task.triggerType == "SceneAuto")
+        {
+            StartCoroutine(AutoSceneTransition(task.triggerParam));
+        }
+        else
+        {
+            Debug.Log($"[TaskManager] TryRunAutoForCurrentTaskAfterContinue: nothing to auto-run for triggerType='{task.triggerType}'");
+        }
     }
 
     private void SpawnAndShow(DialogueLine[] lines)
@@ -597,14 +779,22 @@ public class TaskManager : MonoBehaviour
         if (lines.Length > 0)
             DialogueManager.instance.ShowDialogue(lines, () =>
             {
+                // помечаем, что игрок с этим интерактивом поговорил
+                DialogueManager.MarkInteractionCompleted(objectId);
+
                 PlayerController.InputBlocked = false;
                 NextTask();
             });
         else
+        {
+            // если диалога нет — всё равно пометим (иногда нужно)
+            DialogueManager.MarkInteractionCompleted(objectId);
             NextTask();
+        }
     }
 
-        private void OnSceneExitTrigger(string sceneName)
+
+    private void OnSceneExitTrigger(string sceneName)
     {
         // отписаться, чтобы не дергаться дважды
         SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
@@ -701,6 +891,15 @@ public class TaskManager : MonoBehaviour
     {
         // 1) Обрезаем в диапазон
         index = Mathf.Clamp(index, 0, tasks.Length - 1);
+        if (index == currentIndex)
+        {
+            Debug.Log($"[TaskManager] SetCurrentTaskIndex called with same index {index} — refresh only.");
+            if (isLoading) { _autoPlayedStates.Clear(); IsContinueMode = true; }
+            DialogueCatalog.instance.RefreshState();
+            UpdateTaskUI();
+            SubscribeToTask(GetCurrentTaskData(), suppressAuto: isLoading);
+            return;
+        }
         // 2) Сбрасываем предыдущие подписки...
         UnsubscribeFromTask(GetCurrentTaskData());
         // 3) Устанавливаем
@@ -711,6 +910,7 @@ public class TaskManager : MonoBehaviour
             Debug.Log($"[TaskManager] ContinueGame: Clearing auto-play states and enabling ContinueMode");
             _autoPlayedStates.Clear();
             IsContinueMode = true;
+            _subscribedTaskId = -1; // явно очистить
         }
         else
         {
@@ -881,32 +1081,36 @@ public class TaskManager : MonoBehaviour
     public TaskData GetCurrentTaskData() => tasks.Length > 0 ? tasks[currentIndex] : null;
 
     /// <summary>
-    /// Решает, нужно ли на этой задаче использовать альтернативную модель.
-    /// Здесь просто пример: вернёт true если id совпадает с нужными. 
-    /// Заменяй список id на свои значения (например: 20,21 или 32 и т.д.).
+    /// Возвращает модельный вариант для задачи:
+    /// 0 = default, 1 = variant1, 2 = variant2.
+    /// variant2 имеет приоритет перед variant1.
     /// </summary>
-    public bool ShouldUseAltModel(TaskData task)
+    public int GetModelVariantForTask(TaskData task)
     {
-        if (task == null) return false;
-        int[] altIds = new int[] { 34, 35, 36, 37, 38, 39, 40, 41, 42 };
-        return altIds.Contains(task.id);
+        if (task == null) return 0;
+        if (variant2TaskIds != null && variant2TaskIds.Contains(task.id)) return 2;
+        if (variant1TaskIds != null && variant1TaskIds.Contains(task.id)) return 1;
+        return 0;
     }
 
-    /// <summary>
-    /// Попытаться применить модель для указанной задачи (если Player уже есть).
-    /// </summary>
+    // старый метод оставим для совместимости (если где-то зовётся)
+    public bool ShouldUseAltModel(TaskData task)
+    {
+        return GetModelVariantForTask(task) > 0;
+    }
     public void ApplyModelVariantForTask(TaskData task)
     {
-        bool useAlt = ShouldUseAltModel(task);
+        int variant = GetModelVariantForTask(task);
         if (PlayerController.instance != null)
         {
-            PlayerController.instance.UseAltController(useAlt);
+            PlayerController.instance.SetModelVariant(variant);
         }
         else
         {
-            Debug.Log($"[TaskManager] PlayerController.instance == null; ApplyModelVariant deferred (useAlt={useAlt}). Player will set in Start().");
+            Debug.Log($"[TaskManager] PlayerController.instance == null; ApplyModelVariant deferred (variant={variant}). Player will set in Start().");
         }
     }
+
 
     public void RegisterSceneSpawnPoint(SceneSpawnPoint sp)
     {
@@ -935,6 +1139,22 @@ public class TaskManager : MonoBehaviour
             Debug.Log($"[TaskManager] ClearSceneSpawnPoints: clearing {_sceneSpawnPoints.Count} entries");
         _sceneSpawnPoints.Clear();
     }
+
+    /// <summary>
+    /// Установить подавление катсцены для текущей задачи (один раз).
+    /// Вызывается внешним кодом сразу после SetCurrentTaskIndex(..., isLoading:true)
+    /// перед снятием IsContinueMode.
+    /// </summary>
+    public void SuppressCutsceneForCurrentTaskOnce()
+    {
+        var t = GetCurrentTaskData();
+        if (t != null)
+        {
+            _suppressCutsceneForTaskId = t.id;
+            Debug.Log($"[TaskManager] SuppressCutsceneForCurrentTaskOnce: will suppress cutscene for task {_suppressCutsceneForTaskId}");
+        }
+    }
+
 
     // Замена метода _scene_spawn_points_safe() — сделаем понятное имя:
     private IEnumerable<SceneSpawnPoint> GetSceneSpawnPointsSafe()

@@ -239,7 +239,7 @@ Transform:
   m_GameObject: {fileID: 15733504}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 17.94, y: -9.81, z: 0.009378212}
+  m_LocalPosition: {x: 17.94, y: -6.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -271,7 +271,7 @@ GameObject:
   - component: {fileID: 73092467}
   - component: {fileID: 73092466}
   m_Layer: 0
-  m_Name: TableChair (8)
+  m_Name: TableChair8
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -401,7 +401,7 @@ GameObject:
   - component: {fileID: 90459787}
   - component: {fileID: 90459786}
   m_Layer: 0
-  m_Name: TableChair (4)
+  m_Name: TableChair5
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -531,7 +531,7 @@ GameObject:
   - component: {fileID: 194696451}
   - component: {fileID: 194696450}
   m_Layer: 0
-  m_Name: TableChair (5)
+  m_Name: TableChair6
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1022,7 +1022,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -2.2, y: -10.78}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1033,7 +1033,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 48.33, y: 1.1}
+  m_Size: {x: 44, y: 1}
   m_EdgeRadius: 0
 --- !u!4 &408305180
 Transform:
@@ -1044,7 +1044,7 @@ Transform:
   m_GameObject: {fileID: 408305178}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.1248133, y: -1.4616619, z: -0.0639789}
+  m_LocalPosition: {x: 0, y: -12.15, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1191,7 +1191,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -29, y: 1.47}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1202,7 +1202,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1.2, y: 24.45}
+  m_Size: {x: 1, y: 24}
   m_EdgeRadius: 0
 --- !u!4 &488451128
 Transform:
@@ -1213,7 +1213,7 @@ Transform:
   m_GameObject: {fileID: 488451126}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.87, y: -1.4616619, z: -0.0639789}
+  m_LocalPosition: {x: -23, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1352,7 +1352,7 @@ GameObject:
   - component: {fileID: 636829083}
   - component: {fileID: 636829082}
   m_Layer: 0
-  m_Name: TableChair (2)
+  m_Name: TableChair3
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1520,7 +1520,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -2.14, y: 10.88}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1531,7 +1531,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 48.36, y: 7.6}
+  m_Size: {x: 44, y: 8}
   m_EdgeRadius: 0
 --- !u!4 &799693041
 Transform:
@@ -1542,7 +1542,7 @@ Transform:
   m_GameObject: {fileID: 799693039}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.1248133, y: -1.4616619, z: -0.0639789}
+  m_LocalPosition: {x: 0, y: 9.18, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1560,7 +1560,7 @@ GameObject:
   - component: {fileID: 867505385}
   - component: {fileID: 867505384}
   m_Layer: 0
-  m_Name: TableChair (6)
+  m_Name: TableChair7
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1690,7 +1690,7 @@ GameObject:
   - component: {fileID: 1056703631}
   - component: {fileID: 1056703630}
   m_Layer: 0
-  m_Name: TableChair (3)
+  m_Name: TableChair4
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1857,7 +1857,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 24.49, y: 1.43}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -1868,7 +1868,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1.1, y: 24.58}
+  m_Size: {x: 1, y: 24}
   m_EdgeRadius: 0
 --- !u!4 &1163809572
 Transform:
@@ -1879,7 +1879,7 @@ Transform:
   m_GameObject: {fileID: 1163809570}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.41, y: -1.4616619, z: -0.0639789}
+  m_LocalPosition: {x: 23, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2808,7 +2808,7 @@ GameObject:
   - component: {fileID: 2015024893}
   - component: {fileID: 2015024892}
   m_Layer: 0
-  m_Name: TableChair (1)
+  m_Name: TableChair2
   m_TagString: Furniture
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

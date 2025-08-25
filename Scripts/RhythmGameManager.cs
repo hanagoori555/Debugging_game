@@ -29,6 +29,14 @@ public class RhythmGameManager : MonoBehaviour
     public TextMeshProUGUI hitCounterText;
     public TextMeshProUGUI missCounterText;
 
+    [Header("Battle backgrounds")]
+    public SpriteRenderer backgroundRenderer;
+    public Sprite[] battleBackgrounds;
+
+    [Header("Battle background alpha (0 = transparent, 1 = opaque)")]
+    [Range(0f, 1f)]
+    public float battleBackgroundAlpha = 0.5f;
+
     private Dictionary<int, ChartData> _charts;
     private ChartData _activeChart;
     private float _songTime;
@@ -50,6 +58,9 @@ public class RhythmGameManager : MonoBehaviour
     void Start()
     {
         UpdateCountersUI();
+
+        if (backgroundRenderer != null)
+            backgroundRenderer.gameObject.SetActive(false);
     }
 
     private void LoadAllCharts()
@@ -77,6 +88,9 @@ public class RhythmGameManager : MonoBehaviour
 
     public void EnterRhythmMode(int battleNumber)
     {
+        // запретить открытие и спрятать визуальную панель на время ритма
+        PauseGuard.SetBoth("Rhythm", true);
+
         if (!_charts.TryGetValue(battleNumber, out var chart))
         {
             Debug.LogError($"[RGM] Chart #{battleNumber} not loaded!");
@@ -89,6 +103,9 @@ public class RhythmGameManager : MonoBehaviour
         _isEnding = false;
         _hits = _misses = 0;
         UpdateCountersUI();
+
+        // применяем фон для этого боя (если настроено)
+        ApplyBattleBackground(battleNumber);
 
         var clip = Resources.Load<AudioClip>(chart.musicPath);
         if (clip == null)
@@ -105,7 +122,14 @@ public class RhythmGameManager : MonoBehaviour
     {
         audioSource.Stop();
         _activeChart = null;
+
+        // Восстановим/скроем фон при выходе
+        if (backgroundRenderer != null)
+            backgroundRenderer.gameObject.SetActive(false);
+
         OnRhythmFinished?.Invoke();
+
+        PauseGuard.SetBoth("Rhythm", false);
     }
 
     void Update()
@@ -162,5 +186,46 @@ public class RhythmGameManager : MonoBehaviour
             hitCounterText.text = $"Hits: {_hits}";
         if (missCounterText != null)
             missCounterText.text = $"Misses: {_misses}";
+    }
+
+    // ===========================
+    // Background helpers
+    // ===========================
+    private void ApplyBattleBackground(int battleNumber)
+    {
+        if (backgroundRenderer == null)
+        {
+            // ничего не делать, если не задано
+            Debug.Log("[RGM] backgroundRenderer is null — skipping background apply");
+            return;
+        }
+
+        int idx = battleNumber - 1;
+        float a = Mathf.Clamp01(battleBackgroundAlpha);
+
+        if (idx >= 0 && idx < battleBackgrounds.Length && battleBackgrounds[idx] != null)
+        {
+            backgroundRenderer.sprite = battleBackgrounds[idx];
+
+            // Устанавливаем белый tint + нужную альфу — это даёт полупрозрачный фон,
+            // при этом не трогаем текстуру самого спрайта.
+            Color col = backgroundRenderer.color;
+            col.r = 1f;
+            col.g = 1f;
+            col.b = 1f;
+            col.a = a;
+            backgroundRenderer.color = col;
+
+            backgroundRenderer.gameObject.SetActive(true);
+            Debug.Log($"[RGM] Applied background sprite for battle #{battleNumber}");
+        }
+        else
+        {
+            // если спрайта нет — используем чёрный однородный фон:
+            backgroundRenderer.sprite = null;
+            backgroundRenderer.color = new Color(0f, 0f, 0f, a); ;
+            backgroundRenderer.gameObject.SetActive(true);
+            Debug.Log($"[RGM] No sprite for battle #{battleNumber} — using black background");
+        }
     }
 }

@@ -1,13 +1,42 @@
 ﻿using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using static UnityEditor.PlayerSettings;
+using UnityEngine.UI; // вверху файла
 
 public class MainMenuController : MonoBehaviour
 {
     public string gameSceneName = "School";
     private Vector2 _loadedPos;
     public static event Action<string, Vector2, int> OnContinueGame;
+
+    [Header("UI (optional)")]
+    public Button continueButton; // назначь эту кнопку в инспекторе
+
+    void Start()
+    {
+        RefreshContinueButton();
+    }
+
+    private void RefreshContinueButton()
+    {
+        if (continueButton == null) return;
+        bool ok = IsValidCheckpoint();
+        continueButton.interactable = ok;
+    }
+
+    private bool IsValidCheckpoint()
+    {
+        if (GameSaveManager.instance == null) return false;
+        if (!GameSaveManager.instance.HasCheckpoint()) return false;
+
+        // защита на случай, если "сохранение" — это MainMenu или пустая строка
+        string savedScene = GameSaveManager.instance.GetSavedScene();
+        if (string.IsNullOrEmpty(savedScene)) return false;
+        if (savedScene == "MainMenu" || savedScene == "Bootstrap") return false;
+
+        // при желании можно добавить дополнительные проверки (например, существование файла)
+        return true;
+    }
 
     public void NewGame()
     {
@@ -17,7 +46,7 @@ public class MainMenuController : MonoBehaviour
         if (GameSaveManager.instance != null)
         {
             GameSaveManager.instance.ClearAllData();   // сброс всех сохранений
-            TaskManager.instance.ResetTasks();
+            TaskManager.instance?.ResetTasks();
             // Сбрасываем туториал:
             GameSaveManager.instance.SetTutorialCompleted(false);
         }
@@ -30,51 +59,31 @@ public class MainMenuController : MonoBehaviour
         Debug.Log("ContinueGame() pressed");
         if (UIManager.instance != null)
             UIManager.instance.HidePauseMenu();
-        if (GameSaveManager.instance != null && GameSaveManager.instance.HasCheckpoint())
+
+        // Блокируем действие, если чекпоинт невалиден
+        if (!IsValidCheckpoint())
         {
-            _loadedPos = GameSaveManager.instance.LoadCheckpointPosition();
-
-            // 1) получаем сохранённые данные
-            Debug.Log("  → Has checkpoint, loading saved game");
-            string scene = GameSaveManager.instance.GetSavedScene();
-            if (string.IsNullOrEmpty(scene))
-            {
-                Debug.LogWarning("Saved scene empty → starting NewGame()");
-                NewGame();
-                return;
-            }
-            Vector2 pos = GameSaveManager.instance.LoadCheckpointPosition();
-            int task = GameSaveManager.instance.LoadCurrentTask();
-
-            Debug.Log($"[MainMenu] Continue → scene='{scene}', pos={pos}, task={task}");
-
-            // 2) триггерим событие для BootstrapController
-            OnContinueGame?.Invoke(scene, pos, task);
-
-            // 3) грузим сцену
-            SceneManager.LoadScene(scene);
+            Debug.Log("[MainMenu] No valid checkpoint -> Continue ignored.");
+            RefreshContinueButton(); // подчистим состояние UI
+            return;
         }
-        else
+
+        // есть валидный чекпоинт — читаем параметры и загружаем сцену
+        string scene = GameSaveManager.instance.GetSavedScene();
+        Vector2 pos = GameSaveManager.instance.LoadCheckpointPosition();
+        int task = GameSaveManager.instance.LoadCurrentTask();
+
+        if (string.IsNullOrEmpty(scene))
         {
-            Debug.Log("  → No checkpoint, falling back to NewGame()");
-            NewGame();
+            Debug.LogWarning("[MainMenu] Saved scene is empty -> Continue ignored.");
+            RefreshContinueButton();
+            return;
         }
-    }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        // восстанавливаем задачу:
-        int savedTask = GameSaveManager.instance.LoadCurrentTask();
-        Debug.Log($"[MainMenu] Restoring task index = {savedTask}");
-        TaskManager.instance.SetCurrentTaskIndex(savedTask, true);
+        Debug.Log($"[MainMenu] Continue → scene='{scene}', pos={pos}, task={task}");
 
-        // телепортим игрока
-        var player = FindObjectOfType<PlayerController>();
-        if (player != null)
-            player.TeleportTo(_loadedPos);
-
-        // отписываемся
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        OnContinueGame?.Invoke(scene, pos, task);
+        SceneManager.LoadScene(scene);
     }
 
     public void ExitGame()
