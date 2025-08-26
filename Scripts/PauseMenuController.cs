@@ -1,49 +1,26 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class PauseMenuController : MonoBehaviour
 {
+    public GameObject pauseMenuPanel;
+
     void Awake()
     {
-        // Помечаем этот объект (и всё его содержимое) как "не уничтожать при загрузке сцены"
         DontDestroyOnLoad(gameObject);
     }
 
-    public GameObject pauseMenuPanel;
-
-    void Update()
-    {
-        if (!Input.GetKeyDown(KeyCode.Escape))
-            return;
-
-        // если панель уже открыта — всегда резюмируем
-        if (pauseMenuPanel != null && pauseMenuPanel.activeSelf)
-        {
-            ResumeGame();
-            return;
-        }
-
-        // если визуально скрывается — не позволяем открыть
-        if (PauseGuard.IsHiddenVisual)
-        {
-            Debug.Log("[PauseMenuController] ESC ignored - PauseGuard.HideVisual active.");
-            return;
-        }
-
-        // пауза закрыта -> откроем только если PauseGuard разрешает
-        if (PauseGuard.CanOpenPause())
-        {
-            PauseGame();
-        }
-        else
-        {
-            Debug.Log("[PauseMenuController] ESC ignored - PauseGuard blocks opening pause (cutscene/dialogue/input blocked).");
-        }
-    }
-
-
+    // Удаляем Update() который обрабатывал ESC: теперь UIManager делает это.
+    // Оставляем API для прямого вызова (например, если куда-то ещё зовут PauseMenuController.PauseGame()).
     public void PauseGame()
     {
+        // Если есть UIManager в сцене — делегируем туда (единый источник правды)
+        if (UIManager.instance != null)
+        {
+            UIManager.instance.ForceOpenPause(); // добавим этот метод в UIManager
+            return;
+        }
+
+        // fallback — если UIManager нет, работаем локально
         if (pauseMenuPanel != null)
             pauseMenuPanel.SetActive(true);
         Time.timeScale = 0f;
@@ -51,6 +28,12 @@ public class PauseMenuController : MonoBehaviour
 
     public void ResumeGame()
     {
+        if (UIManager.instance != null)
+        {
+            UIManager.instance.ForceClosePause();
+            return;
+        }
+
         if (pauseMenuPanel != null)
             pauseMenuPanel.SetActive(false);
         Time.timeScale = 1f;
@@ -59,6 +42,6 @@ public class PauseMenuController : MonoBehaviour
     public void ReturnToMainMenu()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
     }
 }

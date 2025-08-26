@@ -16,6 +16,9 @@ public class UIManager : MonoBehaviour
     [Header("Текст текущей задачи")]
     public TextMeshProUGUI taskText;
 
+    [Header("Task background (optional)")]
+    public GameObject taskBackground;
+
     private bool isPaused = false;
 
     void Awake()
@@ -103,6 +106,27 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // Публичные методы, которые будут звать внешние скрипты (PauseMenuController и т.д.)
+    public void ForceOpenPause()
+    {
+        // Игнорируем PauseGuard — если хотим строго следовать PauseGuard, замените CanOpenPause() проверкой
+        isPaused = true;
+        Time.timeScale = 0f;
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(true);
+        Debug.Log("[UIManager] ForceOpenPause called.");
+    }
+
+    public void ForceClosePause()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(false);
+        Debug.Log("[UIManager] ForceClosePause called.");
+    }
+
+
     public void TogglePause()
     {
         // Дополнительная проверка: не дадим открыть паузу, если PauseGuard запрещает
@@ -167,5 +191,32 @@ public class UIManager : MonoBehaviour
     public void HidePauseMenu()
     {
         ClosePause();
+    }
+
+    // прятать/показать кнопку паузы (иконка), вызывается при старте/окончании туториала
+    public void SetPauseButtonVisible(bool visible)
+    {
+        if (pauseButton == null) return;
+
+        // если скрываем — убедимся, что пауза закрыта
+        if (!visible)
+        {
+            if (pauseMenuPanel != null && pauseMenuPanel.activeSelf)
+                ClosePause();
+            pauseButton.gameObject.SetActive(false);
+        }
+        else
+        {
+            pauseButton.gameObject.SetActive(true);
+        }
+    }
+
+    // прятать/показать текст и плашку задачи
+    public void SetTaskPanelVisible(bool visible)
+    {
+        if (taskText == null) return;
+        taskText.gameObject.SetActive(visible);
+        if (taskBackground != null)
+            taskBackground.SetActive(visible);
     }
 }

@@ -26,6 +26,15 @@ public class PlayerController : MonoBehaviour
     private Vector3 _savedPosition = Vector3.zero;
     private bool _hasSavedPosition = false;
 
+    // текущий применённый вариант модели (-1 = не установлен)
+    private int _currentVariant = -1;
+
+    /// <summary>
+    /// Возвращает текущий применённый вариант модели (0/1/2).
+    /// </summary>
+    public int GetCurrentModelVariant() => _currentVariant;
+
+
     void Awake()
     {
         instance = this;
@@ -207,10 +216,21 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Сохраним текущие параметры аниматора, чтобы не потерять направление/позу
+        // Если вариант уже применён — пропускаем, чтобы не делать лишний Rebind и не дергать аниматор зря.
+        if (_currentVariant == variant)
+        {
+            //Debug.Log("[PlayerController] SetModelVariant called with same variant -> skipping.");
+            return;
+        }
+
+        // Сохраним текущие параметры аниматора, чтобы восстановить их после Rebind
         float prevDirection = animator.GetFloat("Direction");
         bool prevIsWalking = animator.GetBool("isWalking");
 
+        // Сохраним позицию/физику, если нужно (чтобы избежать дерганий)
+        Vector2 prevPos = rb != null ? rb.position : (Vector2)transform.position;
+
+        // Применяем нужный контроллер
         switch (variant)
         {
             case 0:
@@ -254,14 +274,22 @@ public class PlayerController : MonoBehaviour
                 break;
         }
 
-        // Rebind сбрасывает состояние аниматора — сразу восстановим нужные параметры
+        // Rebind сбрасывает параметры, поэтому сразу восстановим
         animator.Rebind();
         animator.Update(0f);
 
-        // Восстанавливаем то, что было (Direction / isWalking)
+        // Восстанавливаем параметры
         animator.SetFloat("Direction", prevDirection);
         animator.SetBool("isWalking", prevIsWalking);
+
+        // Восстановим позицию (если Rebind/смена контроллера повлияли, хотя обычно не влияют)
+        if (rb != null) rb.position = prevPos;
+        else transform.position = prevPos;
+
+        // Сохраняем текущий вариант
+        _currentVariant = variant;
     }
+
 
 
     /// Сохраняем совместимость

@@ -1463,7 +1463,7 @@ MonoBehaviour:
   - sceneName: School
     clip: {fileID: 8300000, guid: 2cbef44cf82e5d84795458044b82dfa0, type: 3}
   - sceneName: Zone
-    clip: {fileID: 8300000, guid: 52f577075caaf394d8f8ea66a605f9b0, type: 3}
+    clip: {fileID: 8300000, guid: 3b11573f2330ea841849bd994970fe5f, type: 3}
 --- !u!1 &835973834
 GameObject:
   m_ObjectHideFlags: 0
@@ -1630,6 +1630,7 @@ MonoBehaviour:
   pauseMenuPanel: {fileID: 244544994}
   pauseButton: {fileID: 574456439}
   taskText: {fileID: 835973836}
+  taskBackground: {fileID: 94638130}
 --- !u!4 &948219108
 Transform:
   m_ObjectHideFlags: 0
@@ -3084,6 +3085,7 @@ MonoBehaviour:
   computerPanel: {fileID: 1559144152}
   inputField: {fileID: 966371621}
   executeButton: {fileID: 1179779782}
+  closeButton: {fileID: 0}
 --- !u!4 &1747889569
 Transform:
   m_ObjectHideFlags: 0
