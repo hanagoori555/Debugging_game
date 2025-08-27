@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class RhythmGameManager : MonoBehaviour
 {
@@ -12,12 +11,12 @@ public class RhythmGameManager : MonoBehaviour
     [Header("JSON Chart files (Resources/Charts)")]
     public string[] chartJsonNames = { "Chart1", "Chart2" };
 
-    [Header("AudioSource for playback")]
+    [Header("AudioSource for playback (assign in inspector)")]
     public AudioSource audioSource;
 
-    [Header("Note prefab & spawn points")]
+    [Header("Note prefab & spawn points (assign all spawn transforms in inspector)")]
     public GameObject notePrefab;
-    public Transform[] spawnPoints;
+    public Transform[] spawnPoints; // must be assigned: length >= max lane index + 1
 
     [Header("Lane key bindings")]
     public KeyCode[] laneKeys = new KeyCode[8] {
@@ -25,11 +24,11 @@ public class RhythmGameManager : MonoBehaviour
         KeyCode.U, KeyCode.I, KeyCode.O, KeyCode.P
     };
 
-    [Header("UI Counters (Canvas)")]
+    [Header("UI Counters (Canvas) - assign in inspector")]
     public TextMeshProUGUI hitCounterText;
     public TextMeshProUGUI missCounterText;
 
-    [Header("Battle backgrounds")]
+    [Header("Battle backgrounds (assign in inspector)")]
     public SpriteRenderer backgroundRenderer;
     public Sprite[] battleBackgrounds;
 
@@ -37,6 +36,7 @@ public class RhythmGameManager : MonoBehaviour
     [Range(0f, 1f)]
     public float battleBackgroundAlpha = 0.5f;
 
+    // internals
     private Dictionary<int, ChartData> _charts;
     private ChartData _activeChart;
     private float _songTime;
@@ -48,17 +48,26 @@ public class RhythmGameManager : MonoBehaviour
 
     public event Action OnRhythmFinished;
 
+    // cache to avoid spawning same note multiple times (key=time_lane)
+    private HashSet<string> _spawnedNoteKeys = new HashSet<string>();
+
     void Awake()
     {
+        // simple singleton, but NO DontDestroyOnLoad: keep manager scene-local
         if (instance == null) instance = this;
-        else { Destroy(gameObject); return; }
+        else if (instance != this)
+        {
+            Debug.Log("[RGM] Duplicate RhythmGameManager destroyed.");
+            Destroy(gameObject);
+            return;
+        }
+
         LoadAllCharts();
     }
 
     void Start()
     {
         UpdateCountersUI();
-
         if (backgroundRenderer != null)
             backgroundRenderer.gameObject.SetActive(false);
     }
@@ -86,16 +95,26 @@ public class RhythmGameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Запускает ритм-режим для заданного номера боя.
+    /// Требование: все нужные ссылки (audioSource, spawnPoints, prefab, UI, backgroundRenderer) должны быть назначены в инспекторе.
+    /// </summary>
     public void EnterRhythmMode(int battleNumber)
     {
-        // запретить открытие и спрятать визуальную панель на время ритма
-        PauseGuard.SetBoth("Rhythm", true);
+        if (_activeChart != null)
+        {
+            Debug.LogWarning("[RGM] EnterRhythmMode called but a chart is already active — ignoring.");
+            return;
+        }
 
         if (!_charts.TryGetValue(battleNumber, out var chart))
         {
             Debug.LogError($"[RGM] Chart #{battleNumber} not loaded!");
             return;
         }
+
+        // Очистка кеша дубликатов на старте боя (важно!)
+        _spawnedNoteKeys.Clear();
 
         _activeChart = chart;
         _nextNoteIndex = 0;
@@ -104,39 +123,48 @@ public class RhythmGameManager : MonoBehaviour
         _hits = _misses = 0;
         UpdateCountersUI();
 
-        // применяем фон для этого боя (если настроено)
         ApplyBattleBackground(battleNumber);
 
-        var clip = Resources.Load<AudioClip>(chart.musicPath);
-        if (clip == null)
-            Debug.LogError($"[RGM] AudioClip not found at '{chart.musicPath}'");
+        if (audioSource == null)
+        {
+            Debug.LogError("[RGM] audioSource not assigned in inspector!");
+        }
         else
         {
-            audioSource.clip = clip;
-            audioSource.time = 0f;
-            audioSource.Play();
+            var clip = Resources.Load<AudioClip>(chart.musicPath);
+            if (clip == null)
+                Debug.LogError($"[RGM] AudioClip not found at '{chart.musicPath}'");
+            else
+            {
+                audioSource.Stop();
+                audioSource.clip = clip;
+                audioSource.time = 0f;
+                audioSource.Play();
+            }
         }
     }
 
     public void ExitRhythmMode()
     {
-        audioSource.Stop();
+        // остановим звук и очистим состояние
+        if (audioSource != null) audioSource.Stop();
+
         _activeChart = null;
 
-        // Восстановим/скроем фон при выходе
         if (backgroundRenderer != null)
             backgroundRenderer.gameObject.SetActive(false);
 
         OnRhythmFinished?.Invoke();
 
-        PauseGuard.SetBoth("Rhythm", false);
+        // очистка кеша — безопасно
+        _spawnedNoteKeys.Clear();
     }
 
     void Update()
     {
         if (_activeChart == null || _isEnding) return;
 
-        _songTime = audioSource.isPlaying ? audioSource.time : _songTime + Time.deltaTime;
+        _songTime = (audioSource != null && audioSource.isPlaying) ? audioSource.time : _songTime + Time.deltaTime;
 
         while (_nextNoteIndex < _activeChart.notes.Length &&
                _songTime >= _activeChart.notes[_nextNoteIndex].time)
@@ -154,18 +182,54 @@ public class RhythmGameManager : MonoBehaviour
 
     private IEnumerator WaitAndExit()
     {
-        yield return new WaitWhile(() => audioSource.isPlaying);
+        // ждём, пока музыка действительно закончится
+        yield return new WaitWhile(() => audioSource != null && audioSource.isPlaying);
         yield return new WaitForSeconds(0.5f);
         ExitRhythmMode();
     }
 
     private void SpawnNote(NoteData data)
     {
-        if (data.lane < 0 || data.lane >= spawnPoints.Length) return;
+        // key по времени и лейну (формат фиксированный), предотвращает множественные инстансы одной ноты
+        var key = $"{data.time:F3}_{data.lane}";
+        if (_spawnedNoteKeys.Contains(key))
+        {
+            Debug.LogWarning($"[RGM] Duplicate spawn suppressed for key={key}");
+            return;
+        }
+        _spawnedNoteKeys.Add(key);
+
+        if (spawnPoints == null || data.lane < 0 || data.lane >= spawnPoints.Length)
+        {
+            Debug.LogError($"[RGM] Cannot spawn note: invalid spawn point for lane {data.lane}. Check spawnPoints assignment in inspector.");
+            return;
+        }
+
+        if (spawnPoints[data.lane] == null)
+        {
+            Debug.LogError($"[RGM] spawnPoints[{data.lane}] is null. Assign all spawn transforms in inspector.");
+            return;
+        }
+
+        if (notePrefab == null)
+        {
+            Debug.LogError("[RGM] notePrefab not assigned in inspector!");
+            return;
+        }
 
         var go = Instantiate(notePrefab, spawnPoints[data.lane].position, Quaternion.identity);
+        go.name = $"Note_lane{data.lane}_time{data.time:F3}";
         var note = go.GetComponent<RhythmNote>();
-        note.Initialize(data.lane, data.duration, laneKeys[data.lane]);
+        if (note == null)
+        {
+            Debug.LogError("[RGM] Instantiated prefab does not have RhythmNote component!");
+            Destroy(go);
+            return;
+        }
+        note.Initialize(data.lane, data.duration, laneKeys[Mathf.Clamp(data.lane, 0, laneKeys.Length - 1)]);
+
+        // для отладки — сколько активных нотов в сцене
+        Debug.Log($"[RGM] Spawned note: lane={data.lane}, time={data.time:F3}, totalActiveNotes={FindObjectsOfType<RhythmNote>().Length}");
     }
 
     public void RegisterHit()
@@ -188,14 +252,10 @@ public class RhythmGameManager : MonoBehaviour
             missCounterText.text = $"Misses: {_misses}";
     }
 
-    // ===========================
-    // Background helpers
-    // ===========================
     private void ApplyBattleBackground(int battleNumber)
     {
         if (backgroundRenderer == null)
         {
-            // ничего не делать, если не задано
             Debug.Log("[RGM] backgroundRenderer is null — skipping background apply");
             return;
         }
@@ -206,24 +266,16 @@ public class RhythmGameManager : MonoBehaviour
         if (idx >= 0 && idx < battleBackgrounds.Length && battleBackgrounds[idx] != null)
         {
             backgroundRenderer.sprite = battleBackgrounds[idx];
-
-            // Устанавливаем белый tint + нужную альфу — это даёт полупрозрачный фон,
-            // при этом не трогаем текстуру самого спрайта.
             Color col = backgroundRenderer.color;
-            col.r = 1f;
-            col.g = 1f;
-            col.b = 1f;
-            col.a = a;
+            col.r = 1f; col.g = 1f; col.b = 1f; col.a = a;
             backgroundRenderer.color = col;
-
             backgroundRenderer.gameObject.SetActive(true);
             Debug.Log($"[RGM] Applied background sprite for battle #{battleNumber}");
         }
         else
         {
-            // если спрайта нет — используем чёрный однородный фон:
             backgroundRenderer.sprite = null;
-            backgroundRenderer.color = new Color(0f, 0f, 0f, a); ;
+            backgroundRenderer.color = new Color(0f, 0f, 0f, a);
             backgroundRenderer.gameObject.SetActive(true);
             Debug.Log($"[RGM] No sprite for battle #{battleNumber} — using black background");
         }

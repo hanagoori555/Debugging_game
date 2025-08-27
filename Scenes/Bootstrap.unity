@@ -1463,7 +1463,7 @@ MonoBehaviour:
   - sceneName: School
     clip: {fileID: 8300000, guid: 2cbef44cf82e5d84795458044b82dfa0, type: 3}
   - sceneName: Zone
-    clip: {fileID: 8300000, guid: 3b11573f2330ea841849bd994970fe5f, type: 3}
+    clip: {fileID: 8300000, guid: 476fe48c89ce1bd4795b15d2a29c754b, type: 3}
 --- !u!1 &835973834
 GameObject:
   m_ObjectHideFlags: 0

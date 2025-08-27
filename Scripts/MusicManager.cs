@@ -6,7 +6,7 @@ public class MusicManager : MonoBehaviour
     public static MusicManager instance;
 
     [Header("Аудиоклипы для сцен")]
-    public AudioClip defaultClip;       // на случай, если для сцены не назначено
+    public AudioClip defaultClip;       // на случай, если для сцены не назначено (если null — будет тишина)
     public SceneMusicEntry[] entries;   // карта: имя сцены → нужный клип
 
     private AudioSource src;
@@ -44,20 +44,40 @@ public class MusicManager : MonoBehaviour
         }
     }
 
-
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         // ищем, есть ли под эту сцену отдельный клип
         var entry = System.Array.Find(entries, e => e.sceneName == scene.name);
-        var clip = entry != null && entry.clip != null
-                   ? entry.clip
-                   : defaultClip;
 
-        if (clip == null) return;
+        AudioClip newClip = null;
+        if (entry != null && entry.clip != null)
+        {
+            newClip = entry.clip;
+            Debug.Log($"[MusicManager] Scene '{scene.name}' has assigned clip -> switching to it.");
+        }
+        else if (defaultClip != null)
+        {
+            newClip = defaultClip;
+            Debug.Log($"[MusicManager] Scene '{scene.name}' has no assigned clip -> using default clip.");
+        }
+        else
+        {
+            // НИ ОДНОЙ МУЗЫКИ — хотим тишину: остановить текущую и очистить clip
+            if (src.isPlaying)
+            {
+                Debug.Log($"[MusicManager] Scene '{scene.name}' has no assigned clip and defaultClip is null -> stopping music.");
+                src.Stop();
+            }
+            src.clip = null;
+            return;
+        }
 
-        if (src.clip == clip && src.isPlaying) return;
+        // Если новый клип тот же, что и сейчас и уже играет — ничего не делаем
+        if (src.clip == newClip && src.isPlaying)
+            return;
 
-        src.clip = clip;
+        // Применяем и запускаем
+        src.clip = newClip;
         src.Play();
     }
 }
