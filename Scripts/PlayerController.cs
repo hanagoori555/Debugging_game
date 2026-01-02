@@ -117,7 +117,7 @@ public class PlayerController : MonoBehaviour
         if (InputBlocked)
         {
             // гасим остаточное движение и анимацию
-            if (rb != null) rb.velocity = Vector2.zero;
+            if (rb != null) rb.linearVelocity = Vector2.zero;
             movement = Vector2.zero;
             if (animator != null) animator.SetBool("isWalking", false);
             return;
@@ -204,7 +204,7 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.CompareTag("Boundary") ||
             collision.gameObject.CompareTag("Furniture"))
         {
-            if (rb != null) rb.velocity = Vector2.zero;
+            if (rb != null) rb.linearVelocity = Vector2.zero;
         }
     }
 

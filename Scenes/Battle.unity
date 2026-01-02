@@ -2073,6 +2073,8 @@ MonoBehaviour:
   - "\u0421hart1"
   - "\u0421hart2"
   audioSource: {fileID: 1511042344}
+  hitSfx: {fileID: 8300000, guid: b12f500d63b42ed4b8b781834d457849, type: 3}
+  hitSfxVolume: 1
   notePrefab: {fileID: 3684058397927981372, guid: 664dfee256415ed40bd4c223d9fe38bc, type: 3}
   spawnPoints:
   - {fileID: 1265304535}
@@ -2090,6 +2092,7 @@ MonoBehaviour:
   battleBackgrounds:
   - {fileID: 21300000, guid: ddb0332e12365b54e91166648f82a8bf, type: 3}
   - {fileID: 21300000, guid: da73d149f932ea34d85f998ca555b503, type: 3}
+  battleBackgroundAlpha: 0.5
 --- !u!4 &1511042343
 Transform:
   m_ObjectHideFlags: 0

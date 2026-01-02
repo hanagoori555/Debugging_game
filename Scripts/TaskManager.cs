@@ -107,7 +107,7 @@ public class TaskManager : MonoBehaviour
 
                 if (spawn != null)
                 {
-                    var player = FindObjectOfType<PlayerController>();
+                    var player = FindFirstObjectByType<PlayerController>();
                     if (player != null)
                     {
                         Debug.Log($"[TaskManager] Teleporting player for initiator task {initiatorId} to {spawn.position}");
@@ -150,13 +150,13 @@ public class TaskManager : MonoBehaviour
         ClearSceneSpawnPoints();
 
         // Подстраховка: зарегистрировать уже существующие SceneSpawnPoint'ы в сцене
-        foreach (var sceneSpawn in FindObjectsOfType<SceneSpawnPoint>())
+        foreach (var sceneSpawn in UnityEngine.Object.FindObjectsByType<SceneSpawnPoint>(FindObjectsSortMode.InstanceID))
         {
             RegisterSceneSpawnPoint(sceneSpawn);
         }
 
         // Обычная загрузка игровой сцены: UI, обновление таска и т.д.
-        uiManager = FindObjectOfType<UIManager>();
+        uiManager = FindFirstObjectByType<UIManager>();
         UpdateTaskUI();
 
         // ищем объект Spawn_Default
@@ -177,7 +177,7 @@ public class TaskManager : MonoBehaviour
 
     void Start()
     {
-        uiManager = FindObjectOfType<UIManager>();
+        uiManager = FindFirstObjectByType<UIManager>();
         UpdateTaskUI();
     }
 
@@ -261,7 +261,7 @@ public class TaskManager : MonoBehaviour
         if (task.id == 0)
         {
             _subscribedTaskId = task.id;
-            FindObjectOfType<MainGameController>()?.StartTutorial();
+            FindFirstObjectByType<MainGameController>()?.StartTutorial();
             return;
         }
 
@@ -376,7 +376,7 @@ public class TaskManager : MonoBehaviour
                 if (task.id == 9)
                 {
                     ComputerInterface.OnCorrectCommandEntered += OnConsoleAccepted;
-                    FindObjectOfType<ComputerInterface>()?.Show();
+                    FindFirstObjectByType<ComputerInterface>()?.Show();
                 }
                 else
                 {
@@ -560,7 +560,7 @@ public class TaskManager : MonoBehaviour
             if (savedScene == scene.name)
             {
                 Vector2 pos = GameSaveManager.instance.LoadCheckpointPosition();
-                var player = FindObjectOfType<PlayerController>();
+                var player = FindFirstObjectByType<PlayerController>();
                 if (player != null)
                 {
                     Debug.Log($"[TaskManager] MovePlayer (Continue mode) → teleporting to checkpoint pos {pos}");
@@ -587,7 +587,7 @@ public class TaskManager : MonoBehaviour
 
         if (spawn != null)
         {
-            var player = FindObjectOfType<PlayerController>();
+            var player = FindFirstObjectByType<PlayerController>();
             if (player != null)
             {
                 Debug.Log($"[TaskManager] MovePlayer: teleporting player to spawn for task {GetCurrentTaskIndex()} at {spawn.position}");
@@ -769,28 +769,54 @@ public class TaskManager : MonoBehaviour
     private void OnInteractTrigger(string objectId)
     {
         var task = GetCurrentTaskData();
-        if (task == null) return;
-        if (task.triggerType != "Interact" || task.triggerParam != objectId)
-            return;
 
-        Debug.Log($"[TaskManager] OnInteractTrigger called for id='{objectId}', task={task.id}");
+        Debug.Log($"[TaskManager] OnInteractTrigger received id='{objectId}'. CurrentIndex={GetCurrentTaskIndex()} taskId={(task != null ? task.id : -1)} triggerType={(task != null ? task.triggerType : "null")} triggerParam={(task != null ? task.triggerParam : "null")}");
 
-        var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
-        if (lines.Length > 0)
-            DialogueManager.instance.ShowDialogue(lines, () =>
+        // 1) Если текущая задача явно ожидает этот интеракт -> поведение как раньше (показ диалога и NextTask)
+        if (task != null && task.triggerType == "Interact" && task.triggerParam == objectId)
+        {
+            Debug.Log($"[TaskManager] OnInteractTrigger called for id='{objectId}', task={task.id}");
+            var lines = DialogueCatalog.instance.GetInteractableLines(objectId);
+            if (lines.Length > 0)
             {
-                // помечаем, что игрок с этим интерактивом поговорил
+                DialogueManager.instance.ShowDialogue(lines, () =>
+                {
+                    // помечаем, что игрок с этим интерактивом поговорил
+                    DialogueManager.MarkInteractionCompleted(objectId);
+
+                    PlayerController.InputBlocked = false;
+                    NextTask();
+                });
+            }
+            else
+            {
+                // если диалога нет — всё равно пометим и продвинем задачу
+                DialogueManager.MarkInteractionCompleted(objectId);
+                NextTask();
+            }
+
+            return;
+        }
+
+        // 2) Если текущая задача НЕ ожидает этот объект — попытаться показать опциональный интеракт (без NextTask)
+        var optionalLines = DialogueCatalog.instance.GetInteractableLines(objectId);
+        if (optionalLines != null && optionalLines.Length > 0)
+        {
+            Debug.Log($"[TaskManager] Showing optional interact dialogue for '{objectId}' (not part of current task).");
+            DialogueManager.instance.ShowDialogue(optionalLines, () =>
+            {
+                // Для опциональных интерактов мы обычно НЕ продвигаем задачу.
+                // Можно пометить как "просмотренное" взаимодействие, если нужно:
                 DialogueManager.MarkInteractionCompleted(objectId);
 
                 PlayerController.InputBlocked = false;
-                NextTask();
+                // НЕ вызываем NextTask()
             });
-        else
-        {
-            // если диалога нет — всё равно пометим (иногда нужно)
-            DialogueManager.MarkInteractionCompleted(objectId);
-            NextTask();
+            return;
         }
+
+        // 3) Ничего не найдено — игнорируем (или логируем)
+        Debug.Log($"[TaskManager] OnInteractTrigger: no dialogue found for '{objectId}' and it's not expected by current task.");
     }
 
 
@@ -815,7 +841,7 @@ public class TaskManager : MonoBehaviour
         StageManager.OnBackgroundTransition -= OnBackgroundTransition;
 
         // 1) разблокируем ввод
-        var player = FindObjectOfType<PlayerController>();
+        var player = FindFirstObjectByType<PlayerController>();
         if (player != null) PlayerController.InputBlocked = false;
 
         // 2) переходим к следующей задаче

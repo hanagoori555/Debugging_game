@@ -55,6 +55,46 @@
               "text": "Честно, она устала. В эту ночь Розетте ничего не снилось."
             }
           ]
+        },
+        {
+          "objectId": "Closet",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Внутри висят аккуратно сложенные вещи и одна пугающе пустая вешалка."
+            }
+          ]
+        },
+        {
+          "objectId": "Computer",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Клавиатура липкая: кое-кто ужинал прямо здесь, погружённый в экран."
+            }
+          ]
+        },
+        {
+          "objectId": "Nightstand",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "На тумбочке — фоторамка без стекла и банка с лекарствами."
+            }
+          ]
+        },
+        {
+          "objectId": "Toys",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Зайчик со стянувшимся глазом смотрит пустыми стеклянными глазами."
+            }
+          ]
         }
       ],
       "autoDialogs": [],
@@ -204,6 +244,43 @@
           ]
         }
       ]
+    },
+    {
+      "stateId": 14,
+      "interactables": [
+        {
+          "objectId": "Computer",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Под столом валяется старая флешка; содержимое — загадка."
+            }
+          ]
+        },
+        {
+          "objectId": "Nightstand",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "В ящике спрятан билет — может, на автобус в никуда."
+            }
+          ]
+        },
+        {
+          "objectId": "Toys",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "За игрушками прячется пыльный пазл — недоделанная история игры."
+            }
+          ]
+        }
+      ],
+      "autoDialogs": [],
+      "cutscenes": []
     },
     {
       "stateId": 15,
@@ -452,6 +529,53 @@
           "text": "Но пустая боль в груди говорила ей, что всё не так просто."
         }
       ],
+      "cutscenes": []
+    },
+    {
+      "stateId": 21,
+      "interactables": [
+        {
+          "objectId": "Closet",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Замок шкафа немного помят — кто-то пытался открыть в спешке."
+            }
+          ]
+        },
+        {
+          "objectId": "Computer",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "..."
+            }
+          ]
+        },
+        {
+          "objectId": "Nightstand",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Поставь будильник."
+            }
+          ]
+        },
+        {
+          "objectId": "Toys",
+          "dialogue": [
+            {
+              "characterName": "",
+              "avatar": "",
+              "text": "Игрушки сложены небрежно, она сорвалась в последний миг."
+            }
+          ]
+        }
+      ],
+      "autoDialogs": [],
       "cutscenes": []
     }
   ]

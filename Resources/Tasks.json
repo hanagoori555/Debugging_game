@@ -2,14 +2,14 @@
   "tasks": [
     {
       "id": 0,
-      "description": "Первая задача",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": false
     },
     {
       "id": 1,
-      "description": "Поговорить с Элоизой. ПРЕ",
+      "description": "",
       "triggerType": "Interact",
       "triggerParam": "EloisaSit1",
       "hasCutscene": true
@@ -44,7 +44,7 @@
     },
     {
       "id": 6,
-      "description": "Шестая задача",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": false
@@ -233,14 +233,14 @@
     },
     {
       "id": 33,
-      "description": "Катсцена с падением",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true
     },
     {
       "id": 34,
-      "description": "Перенос в Зону Перерождения",
+      "description": "",
       "triggerType": "SceneAuto",
       "triggerParam": "Zone",
       "hasCutscene": false
@@ -254,7 +254,7 @@
     },
     {
       "id": 36,
-      "description": "Катсцена с историей",
+      "description": "",
       "triggerType": "Auto",
       "triggerParam": "",
       "hasCutscene": true

@@ -84,7 +84,7 @@ public class BootstrapController : MonoBehaviour
         if (sp != null) spawnPos = sp.transform.position;
 
         // Если игрок уже есть в сцене — не инстантируем новый (избегаем дубликатов и потери состояния)
-        var existingPlayer = FindObjectOfType<PlayerController>();
+        var existingPlayer = FindFirstObjectByType<PlayerController>();
         if (existingPlayer == null)
         {
             var prefab = Resources.Load<GameObject>(playerPrefabPath);

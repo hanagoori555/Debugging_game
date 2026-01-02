@@ -1455,7 +1455,7 @@ MonoBehaviour:
   - sceneName: DarkWorld
     clip: {fileID: 0}
   - sceneName: Forest
-    clip: {fileID: 8300000, guid: a9581df0dc516624880595b64866208a, type: 3}
+    clip: {fileID: 8300000, guid: 916007a052e78cb49ad73e10bb919e77, type: 3}
   - sceneName: Home
     clip: {fileID: 8300000, guid: 52f577075caaf394d8f8ea66a605f9b0, type: 3}
   - sceneName: MainMenu
@@ -1463,7 +1463,7 @@ MonoBehaviour:
   - sceneName: School
     clip: {fileID: 8300000, guid: 2cbef44cf82e5d84795458044b82dfa0, type: 3}
   - sceneName: Zone
-    clip: {fileID: 8300000, guid: 476fe48c89ce1bd4795b15d2a29c754b, type: 3}
+    clip: {fileID: 8300000, guid: 0afc6a0f422478942ac1df4a51319f59, type: 3}
 --- !u!1 &835973834
 GameObject:
   m_ObjectHideFlags: 0
@@ -3775,8 +3775,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -475, y: 264}
-  m_SizeDelta: {x: -1650, y: 48.690002}
+  m_AnchoredPosition: {x: -375.02502, y: 264}
+  m_SizeDelta: {x: -1449.95, y: 48.690002}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &2121825794
 MonoBehaviour:

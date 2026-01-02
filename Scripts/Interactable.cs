@@ -12,20 +12,36 @@ public class Interactable : MonoBehaviour
     private bool isPlayerNearby;
 
     void OnTriggerEnter2D(Collider2D c)
-        => isPlayerNearby = c.CompareTag("Player");
+    {
+        Debug.Log($"[Interactable] OnTriggerEnter id={objectId}, this.enabled={enabled}, objActive={gameObject.activeSelf}, collider.name={c.gameObject.name}, collider.tag={c.gameObject.tag}");
+        // только помечаем как рядом, если вошёл именно Player
+        isPlayerNearby = c.CompareTag("Player");
+        Debug.Log($"[Interactable] -> isPlayerNearby set to {isPlayerNearby} for id={objectId}");
+    }
 
     void OnTriggerExit2D(Collider2D c)
-        => isPlayerNearby = false;
+    {
+        Debug.Log($"[Interactable] OnTriggerExit id={objectId}, collider.name={c.gameObject.name}, collider.tag={c.gameObject.tag}");
+        isPlayerNearby = false;
+    }
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Debug.Log($"[Interactable] Key E pressed while isPlayerNearby={isPlayerNearby} for id={objectId}");
+        }
+
         if (!isPlayerNearby || !Input.GetKeyDown(KeyCode.E))
             return;
 
-        // гарантируем, что это нужный объект
         if (string.IsNullOrEmpty(objectId))
+        {
+            Debug.LogWarning($"[Interactable] Interaction attempted but objectId empty on {gameObject.name}");
             return;
+        }
 
+        Debug.Log($"[Interactable] Invoking OnAnyInteract for id={objectId}");
         OnAnyInteract?.Invoke(objectId);
     }
 }

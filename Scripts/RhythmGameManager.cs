@@ -14,6 +14,14 @@ public class RhythmGameManager : MonoBehaviour
     [Header("AudioSource for playback (assign in inspector)")]
     public AudioSource audioSource;
 
+    [Header("SFX for hits (assign in inspector)")]
+    public AudioClip hitSfx;
+    [Range(0f, 1f)]
+    public float hitSfxVolume = 1f;
+
+    // internal sfx source (separate from music audioSource)
+    private AudioSource _sfxSource;
+
     [Header("Note prefab & spawn points (assign all spawn transforms in inspector)")]
     public GameObject notePrefab;
     public Transform[] spawnPoints; // must be assigned: length >= max lane index + 1
@@ -63,6 +71,14 @@ public class RhythmGameManager : MonoBehaviour
         }
 
         LoadAllCharts();
+
+        // ensure sfx audio source exists (separate from music)
+        if (_sfxSource == null)
+        {
+            _sfxSource = gameObject.AddComponent<AudioSource>();
+            _sfxSource.playOnAwake = false;
+            _sfxSource.loop = false;
+        }
     }
 
     void Start()
@@ -227,15 +243,25 @@ public class RhythmGameManager : MonoBehaviour
             return;
         }
         note.Initialize(data.lane, data.duration, laneKeys[Mathf.Clamp(data.lane, 0, laneKeys.Length - 1)]);
-
-        // для отладки — сколько активных нотов в сцене
-        Debug.Log($"[RGM] Spawned note: lane={data.lane}, time={data.time:F3}, totalActiveNotes={FindObjectsOfType<RhythmNote>().Length}");
     }
 
     public void RegisterHit()
     {
         _hits++;
         UpdateCountersUI();
+
+        // воспроизводим отклик SFX — сыграет для коротких нот сразу,
+        // для длинных — в момент, когда нота вызывает RegisterHit (в конце удержания)
+        if (hitSfx != null)
+        {
+            if (_sfxSource == null)
+            {
+                _sfxSource = gameObject.AddComponent<AudioSource>();
+                _sfxSource.playOnAwake = false;
+                _sfxSource.loop = false;
+            }
+            _sfxSource.PlayOneShot(hitSfx, hitSfxVolume);
+        }
     }
 
     public void RegisterMiss()
