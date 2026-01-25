@@ -4,9 +4,9 @@
 public class LineData
 {
     public string characterName;
-    public string avatar;   // имя спрайта в Resources/Sprites/Portraits
+    public string avatar;
     public string text;
-    public string backgroundImage;  // <-- имя файла спрайта в Resources/Backgrounds
+    public string backgroundImage;
 }
 
 [Serializable]

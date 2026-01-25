@@ -24,10 +24,10 @@ public class StageManager : MonoBehaviour
 
     private int currentIndex = 0;
 
-    // чтобы не выполнять переход дважды для одной и той же задачи
+    // Чтобы не выполнять переход дважды для одной и той же задачи
     private int _lastHandledTaskId = -1;
 
-    // если игрок вошёл в триггер раньше чем выполнил интеракт — отложенный переход
+    // Если игрок вошёл в триггер раньше чем выполнил интеракт — отложенный переход
     private bool _pendingTrigger = false;
     private Collider2D _pendingPlayerCollider = null;
 
@@ -39,7 +39,7 @@ public class StageManager : MonoBehaviour
 
     void OnEnable()
     {
-        // подписываемся на событие завершения интеракта (если DialogueManager предоставляет)
+        // Подписываемся на событие завершения интеракта
         DialogueManager.OnInteractionCompleted -= OnInteractionCompleted;
         DialogueManager.OnInteractionCompleted += OnInteractionCompleted;
     }
@@ -58,7 +58,7 @@ public class StageManager : MonoBehaviour
 
         Debug.Log($"[StageManager] TriggerEnter. currentTaskId={currentTaskId}, allowed={string.Join(",", allowedTaskIds)}");
 
-        // если текущая задача не разрешает этот переход — блокируем
+        // Если текущая задача не разрешает этот переход — блокируем
         if (allowedTaskIds != null && allowedTaskIds.Count > 0)
         {
             if (!allowedTaskIds.Contains(currentTaskId))
@@ -68,14 +68,14 @@ public class StageManager : MonoBehaviour
             }
         }
 
-        // защита: если этот переход уже выполнён для этой же задачи — игнорируем
+        // Защита: если этот переход уже выполнён для этой же задачи — игнорируем
         if (_lastHandledTaskId == currentTaskId)
         {
             Debug.Log($"[StageManager] Ignoring: transition for task {currentTaskId} was already handled.");
             return;
         }
 
-        // если требуется интеракт — проверяем счетчик в DialogueManager
+        // Если требуется интеракт — проверяем счетчик в DialogueManager
         if (!string.IsNullOrEmpty(requiredInteractionId))
         {
             if (DialogueManager.HasCompletedInteraction(requiredInteractionId, requiredInteractionCount))
@@ -92,7 +92,7 @@ public class StageManager : MonoBehaviour
             }
         }
 
-        // иначе — делаем переход
+        // Иначе — делаем переход
         PerformBackgroundTransition(other, currentTaskId);
     }
 
@@ -104,7 +104,7 @@ public class StageManager : MonoBehaviour
         Debug.Log($"[StageManager] OnInteractionCompleted: id={id} total={totalCount} needed={requiredInteractionCount}");
         if (totalCount >= requiredInteractionCount)
         {
-            // выполним отложенный переход
+            // Выполним отложенный переход
             if (_pendingPlayerCollider != null)
             {
                 var currentTask = TaskManager.instance?.GetCurrentTaskData();
@@ -134,7 +134,7 @@ public class StageManager : MonoBehaviour
 
         PlayerController.InputBlocked = true;
 
-        // помечаем, что для этой задачи переход уже выполнен (чтобы не повторять)
+        // Помечаем, что для этой задачи переход уже выполнен (чтобы не повторять)
         _lastHandledTaskId = currentTaskId;
 
         Debug.Log($"[StageManager] Performed background transition for task {currentTaskId}");

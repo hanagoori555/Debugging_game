@@ -19,12 +19,11 @@ public class RhythmGameManager : MonoBehaviour
     [Range(0f, 1f)]
     public float hitSfxVolume = 1f;
 
-    // internal sfx source (separate from music audioSource)
     private AudioSource _sfxSource;
 
     [Header("Note prefab & spawn points (assign all spawn transforms in inspector)")]
     public GameObject notePrefab;
-    public Transform[] spawnPoints; // must be assigned: length >= max lane index + 1
+    public Transform[] spawnPoints;
 
     [Header("Lane key bindings")]
     public KeyCode[] laneKeys = new KeyCode[8] {
@@ -44,7 +43,6 @@ public class RhythmGameManager : MonoBehaviour
     [Range(0f, 1f)]
     public float battleBackgroundAlpha = 0.5f;
 
-    // internals
     private Dictionary<int, ChartData> _charts;
     private ChartData _activeChart;
     private float _songTime;
@@ -56,12 +54,10 @@ public class RhythmGameManager : MonoBehaviour
 
     public event Action OnRhythmFinished;
 
-    // cache to avoid spawning same note multiple times (key=time_lane)
     private HashSet<string> _spawnedNoteKeys = new HashSet<string>();
 
     void Awake()
     {
-        // simple singleton, but NO DontDestroyOnLoad: keep manager scene-local
         if (instance == null) instance = this;
         else if (instance != this)
         {
@@ -72,7 +68,6 @@ public class RhythmGameManager : MonoBehaviour
 
         LoadAllCharts();
 
-        // ensure sfx audio source exists (separate from music)
         if (_sfxSource == null)
         {
             _sfxSource = gameObject.AddComponent<AudioSource>();
@@ -129,7 +124,7 @@ public class RhythmGameManager : MonoBehaviour
             return;
         }
 
-        // Очистка кеша дубликатов на старте боя (важно!)
+        // Очистка кеша дубликатов на старте боя
         _spawnedNoteKeys.Clear();
 
         _activeChart = chart;
@@ -162,7 +157,7 @@ public class RhythmGameManager : MonoBehaviour
 
     public void ExitRhythmMode()
     {
-        // остановим звук и очистим состояние
+        // Остановим звук и очистим состояние
         if (audioSource != null) audioSource.Stop();
 
         _activeChart = null;
@@ -172,7 +167,7 @@ public class RhythmGameManager : MonoBehaviour
 
         OnRhythmFinished?.Invoke();
 
-        // очистка кеша — безопасно
+        // Очистка кеша
         _spawnedNoteKeys.Clear();
     }
 
@@ -198,7 +193,7 @@ public class RhythmGameManager : MonoBehaviour
 
     private IEnumerator WaitAndExit()
     {
-        // ждём, пока музыка действительно закончится
+        // Ждём, пока музыка действительно закончится
         yield return new WaitWhile(() => audioSource != null && audioSource.isPlaying);
         yield return new WaitForSeconds(0.5f);
         ExitRhythmMode();
@@ -250,8 +245,8 @@ public class RhythmGameManager : MonoBehaviour
         _hits++;
         UpdateCountersUI();
 
-        // воспроизводим отклик SFX — сыграет для коротких нот сразу,
-        // для длинных — в момент, когда нота вызывает RegisterHit (в конце удержания)
+        // Воспроизводим отклик SFX — сыграет для коротких нот сразу,
+        // Для длинных — в момент, когда нота вызывает RegisterHit (в конце удержания)
         if (hitSfx != null)
         {
             if (_sfxSource == null)

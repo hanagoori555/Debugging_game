@@ -10,7 +10,7 @@ public class MainMenuController : MonoBehaviour
     public static event Action<string, Vector2, int> OnContinueGame;
 
     [Header("UI (optional)")]
-    public Button continueButton; // назначь эту кнопку в инспекторе
+    public Button continueButton;
 
     void Start()
     {
@@ -29,12 +29,11 @@ public class MainMenuController : MonoBehaviour
         if (GameSaveManager.instance == null) return false;
         if (!GameSaveManager.instance.HasCheckpoint()) return false;
 
-        // защита на случай, если "сохранение" — это MainMenu или пустая строка
+        // Защита на случай, если "сохранение" — это MainMenu или пустая строка
         string savedScene = GameSaveManager.instance.GetSavedScene();
         if (string.IsNullOrEmpty(savedScene)) return false;
         if (savedScene == "MainMenu" || savedScene == "Bootstrap") return false;
 
-        // при желании можно добавить дополнительные проверки (например, существование файла)
         return true;
     }
 
@@ -45,9 +44,9 @@ public class MainMenuController : MonoBehaviour
 
         if (GameSaveManager.instance != null)
         {
-            GameSaveManager.instance.ClearAllData();   // сброс всех сохранений
+            GameSaveManager.instance.ClearAllData();   // Сброс всех сохранений
             TaskManager.instance?.ResetTasks();
-            // Сбрасываем туториал:
+            // Сбрасываем туториал
             GameSaveManager.instance.SetTutorialCompleted(false);
         }
 
@@ -64,11 +63,11 @@ public class MainMenuController : MonoBehaviour
         if (!IsValidCheckpoint())
         {
             Debug.Log("[MainMenu] No valid checkpoint -> Continue ignored.");
-            RefreshContinueButton(); // подчистим состояние UI
+            RefreshContinueButton(); // Подчистим состояние UI
             return;
         }
 
-        // есть валидный чекпоинт — читаем параметры и загружаем сцену
+        // Есть валидный чекпоинт — читаем параметры и загружаем сцену
         string scene = GameSaveManager.instance.GetSavedScene();
         Vector2 pos = GameSaveManager.instance.LoadCheckpointPosition();
         int task = GameSaveManager.instance.LoadCurrentTask();
@@ -88,7 +87,7 @@ public class MainMenuController : MonoBehaviour
 
     public void ExitGame()
     {
-        UnityEditor.EditorApplication.isPlaying = false;
-        //Application.Quit();
+        // UnityEditor.EditorApplication.isPlaying = false;
+        Application.Quit();
     }
 }

@@ -10,8 +10,8 @@
     {
       "id": 1,
       "description": "",
-      "triggerType": "Interact",
-      "triggerParam": "EloisaSit1",
+      "triggerType": "Auto",
+      "triggerParam": "",
       "hasCutscene": true
     },
     {

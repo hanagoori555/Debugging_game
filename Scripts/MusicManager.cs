@@ -6,8 +6,8 @@ public class MusicManager : MonoBehaviour
     public static MusicManager instance;
 
     [Header("Аудиоклипы для сцен")]
-    public AudioClip defaultClip;       // на случай, если для сцены не назначено (если null — будет тишина)
-    public SceneMusicEntry[] entries;   // карта: имя сцены → нужный клип
+    public AudioClip defaultClip;
+    public SceneMusicEntry[] entries;
 
     private AudioSource src;
 
@@ -46,7 +46,7 @@ public class MusicManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // ищем, есть ли под эту сцену отдельный клип
+        // Ищем, есть ли под эту сцену отдельный клип
         var entry = System.Array.Find(entries, e => e.sceneName == scene.name);
 
         AudioClip newClip = null;

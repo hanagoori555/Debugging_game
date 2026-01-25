@@ -25,7 +25,7 @@ public class TaskManager : MonoBehaviour
     [Header("Model variant task IDs (configure in inspector)")]
     // Если задача входит в variant1TaskIds -> применяем variant 1
     // Если входит в variant2TaskIds -> применяем variant 2 (приоритетнее)
-    public List<int> variant1TaskIds = new List<int>() { 35, 36, 37, 38};
+    public List<int> variant1TaskIds = new List<int>() { 35, 36, 37, 38 };
     public List<int> variant2TaskIds = new List<int>() { 39, 40, 41, 42 };
 
     [Header("Gameplay scenes (used to block cutscenes in menus)")]
@@ -53,6 +53,9 @@ public class TaskManager : MonoBehaviour
     public event Action<TaskData> OnTaskChanged;
     private HashSet<int> _autoPlayedStates = new HashSet<int>();
     private List<SceneSpawnPoint> _sceneSpawnPoints = new List<SceneSpawnPoint>();
+
+    // true, если мы подписались глобально на OnAnyInteract (один раз для игровых сцен)
+    private bool _globalInteractSubscribed = false;
 
     void Awake()
     {
@@ -139,6 +142,9 @@ public class TaskManager : MonoBehaviour
             return;
         }
 
+        // В игровые сцены — гарантируем одну глобальную подписку на все интеракты.
+        EnsureGlobalInteractSubscription();
+
         // 3) Если загрузилась сама сцена "Battle" — ничего не трогаем
         if (scene.name == "Battle")
         {
@@ -168,6 +174,13 @@ public class TaskManager : MonoBehaviour
         if (IsContinueMode)
         {
             Debug.Log("[TaskManager] OnSceneLoaded: ContinueMode active -> skipping SubscribeToTask (already handled).");
+            // Safety: если подписка не была установлена (например, потерялась) — безопасно пересубscribe минимально
+            var cur = GetCurrentTaskData();
+            if (cur != null && _subscribedTaskId != cur.id)
+            {
+                Debug.Log("[TaskManager] OnSceneLoaded: ContinueMode but no subscription found -> re-subscribing (suppressAuto).");
+                SubscribeToTask(cur, suppressAuto: true);
+            }
         }
         else
         {
@@ -179,6 +192,12 @@ public class TaskManager : MonoBehaviour
     {
         uiManager = FindFirstObjectByType<UIManager>();
         UpdateTaskUI();
+
+        if (_subscribedTaskId != GetCurrentTaskData()?.id)
+        {
+            Debug.Log("[TaskManager] Debug: forcing minimal subscription in Start()");
+            SubscribeToTask(GetCurrentTaskData(), suppressAuto: true);
+        }
     }
 
     void OnDestroy()
@@ -194,14 +213,38 @@ public class TaskManager : MonoBehaviour
 
     public void HandleUnsubscribeAll()
     {
-        Interactable.OnAnyInteract -= OnInteractTrigger;
+        // Удаляем глобальную подписку, если есть
+        RemoveGlobalInteractSubscription();
+
+        // Удаляем прочие подписки
         SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
         ComputerInterface.OnCorrectCommandEntered -= OnConsoleAccepted;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // --- Global interact subscription helpers ---
+    private void EnsureGlobalInteractSubscription()
+    {
+        if (_globalInteractSubscribed) return;
+        Interactable.OnAnyInteract += OnInteractTrigger;
+        _globalInteractSubscribed = true;
+        Debug.Log($"[TaskManager] EnsureGlobalInteractSubscription -> subscribed global; listeners={Interactable.GetOnAnyInteractSubscriberCount()}");
+    }
+
+    private void RemoveGlobalInteractSubscription()
+    {
+        if (!_globalInteractSubscribed) return;
+        Interactable.OnAnyInteract -= OnInteractTrigger;
+        _globalInteractSubscribed = false;
+        Debug.Log($"[TaskManager] RemoveGlobalInteractSubscription -> unsubscribed global; listeners={Interactable.GetOnAnyInteractSubscriberCount()}");
+    }
+    // --- end helpers ---
+
+
     public void SubscribeToTask(TaskData task, bool suppressAuto = false)
     {
+        Debug.Log($"[TaskManager] SubscribeToTask called for task {task.id}, triggerType={task.triggerType}, suppressAuto={suppressAuto}, IsContinueMode={IsContinueMode}, _subscribedTaskId={_subscribedTaskId}");
+
         if (task == null) return;
 
         // Защита от повторной подписки
@@ -232,7 +275,9 @@ public class TaskManager : MonoBehaviour
             switch (task.triggerType)
             {
                 case "Interact":
-                    Interactable.OnAnyInteract += OnInteractTrigger;
+                    // Используем глобальную подписку для доставки всех интерактов
+                    EnsureGlobalInteractSubscription();
+                    Debug.Log($"[TaskManager] (suppressAuto) ensured global interact subscription for task {task.id}. listeners={Interactable.GetOnAnyInteractSubscriberCount()}");
                     break;
                 case "SceneExit":
                     SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
@@ -277,7 +322,8 @@ public class TaskManager : MonoBehaviour
                 // Подписываемся на OnAnyInteract только после завершения катсцены (как и было)
                 if (task.triggerType == "Interact")
                 {
-                    Interactable.OnAnyInteract += OnInteractTrigger;
+                    // используем глобальную подписку вместо per-task +=
+                    EnsureGlobalInteractSubscription();
                 }
                 // Для Auto-задач сразу переходим к следующей задаче
                 else if (task.triggerType == "Auto")
@@ -305,7 +351,7 @@ public class TaskManager : MonoBehaviour
 
             // ведём себя как при suppressAuto: минимально подписываемся в зависимости от типа триггера
             if (task.triggerType == "Interact")
-                Interactable.OnAnyInteract += OnInteractTrigger;
+                EnsureGlobalInteractSubscription();
             else if (task.triggerType == "SceneExit")
                 SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
             // Для Auto/SceneAuto/BackgroundTransition — ничего не делаем (они будут запускаться через TriggerAutoAfterLoad/TryRunAuto...)
@@ -318,7 +364,7 @@ public class TaskManager : MonoBehaviour
         {
             Debug.Log($"[TaskManager] Skipping cutscene for task {task.id} because ContinueMode is active.");
             if (task.triggerType == "Interact")
-                Interactable.OnAnyInteract += OnInteractTrigger;
+                EnsureGlobalInteractSubscription();
             else if (task.triggerType == "SceneExit")
                 SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
             // Если это Auto и был cutscene — не продвигаем индекс автоматически на Continue.
@@ -331,7 +377,7 @@ public class TaskManager : MonoBehaviour
         {
             Debug.Log($"[TaskManager] Not starting cutscene for task {task.id} because current scene '{active}' is not a gameplay scene.");
             if (task.triggerType == "Interact")
-                Interactable.OnAnyInteract += OnInteractTrigger;
+                EnsureGlobalInteractSubscription();
             else if (task.triggerType == "SceneExit")
                 SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
             return;
@@ -360,7 +406,7 @@ public class TaskManager : MonoBehaviour
             Debug.Log($"[TaskManager] SubscribeToTaskTrigger: skipping automatic triggers for task {task.id} because ContinueMode active.");
             // Но подписываем минимально интеракт/sceneExit, чтобы игрок мог взаимодействовать
             if (task.triggerType == "Interact")
-                Interactable.OnAnyInteract += OnInteractTrigger;
+                EnsureGlobalInteractSubscription();
             else if (task.triggerType == "SceneExit")
                 SceneExitDetector.OnSceneExit += OnSceneExitTrigger;
             return;
@@ -380,7 +426,8 @@ public class TaskManager : MonoBehaviour
                 }
                 else
                 {
-                    Interactable.OnAnyInteract += OnInteractTrigger;
+                    // Используем глобальную подписку
+                    EnsureGlobalInteractSubscription();
                 }
                 break;
 
@@ -414,7 +461,7 @@ public class TaskManager : MonoBehaviour
 
     /// <summary>
     /// Сработает, когда StageManager вызовет OnBackgroundTransition.
-    /// Переходит к следующей задаче, но только если это наша текущая BackgroundTransition‑задача.
+    /// Переходит к следующей задаче, но только если это наша текущая BackgroundTransition-задача.
     /// </summary>
     private void HandleBackgroundTransition()
     {
@@ -424,7 +471,7 @@ public class TaskManager : MonoBehaviour
         // 2) отписываемся, чтобы не дергаться дважды
         StageManager.OnBackgroundTransition -= HandleBackgroundTransition;
 
-        // 3) запускаем авто‑диалог (если он есть)
+        // 3) запускаем авто-диалог (если он есть)
         var lines = DialogueCatalog.instance.GetAutoDialogueForCurrentState();
         if (lines != null && lines.Length > 0)
         {
@@ -445,8 +492,8 @@ public class TaskManager : MonoBehaviour
 
     private IEnumerator StartRhythmTaskAsync(TaskData task)
     {
-        if((task.id != 32 && task.id != 41) || _rhythmDone)
-             yield break;
+        if ((task.id != 32 && task.id != 41) || _rhythmDone)
+            yield break;
 
         Debug.Log($"[TaskManager] Enter StartRhythmTaskAsync for task {task.id}");
         if (_isRhythmRunning)
@@ -454,6 +501,10 @@ public class TaskManager : MonoBehaviour
             Debug.Log("[TaskManager] Rhythm already running, abort");
             yield break;
         }
+
+        // Блокируем доступ к паузе пока ритм не завершится
+        Debug.Log("[TaskManager] Blocking pause for rhythm");
+        PauseGuard.SetBoth("Rhythm", true);
 
         // Остановка фоновой музыки
         if (MusicManager.instance != null)
@@ -465,7 +516,7 @@ public class TaskManager : MonoBehaviour
         // Парсим номер боя
         if (!int.TryParse(task.triggerParam, out int battleNumber))
         {
-            Debug.LogError($"[TaskManager] Bad rhythm‑param '{task.triggerParam}'");
+            Debug.LogError($"[TaskManager] Bad rhythm-param '{task.triggerParam}'");
             yield break;
         }
 
@@ -493,6 +544,10 @@ public class TaskManager : MonoBehaviour
 
         _isRhythmRunning = false;
         _rhythmDone = true;
+
+        // Разблокируем паузу — ритм закончился
+        Debug.Log("[TaskManager] Unblocking pause for rhythm");
+        PauseGuard.SetBoth("Rhythm", false);
 
         // Возвращаемся в нужную сцену
         int taskId = GetCurrentTaskIndex();
@@ -618,15 +673,31 @@ public class TaskManager : MonoBehaviour
 
     public void UnsubscribeFromTask(TaskData task)
     {
+        Debug.Log($"[TaskManager] UnsubscribeFromTask called for task {(task != null ? task.id : -1)}; will remove handlers");
+
         if (task == null) return;
 
         switch (task.triggerType)
         {
             case "Interact":
                 if (task.id == 9)
+                {
                     ComputerInterface.OnCorrectCommandEntered -= OnConsoleAccepted;
+                }
                 else
-                    Interactable.OnAnyInteract -= OnInteractTrigger;
+                {
+                    // Если у нас включена глобальная подписка — не убираем её на уровне одной задачи,
+                    // иначе — убираем per-task подписку.
+                    if (!_globalInteractSubscribed)
+                    {
+                        Interactable.OnAnyInteract -= OnInteractTrigger;
+                        Debug.Log($"[TaskManager] Unsubscribed Interactable.OnAnyInteract for task {task.id}. listeners={Interactable.GetOnAnyInteractSubscriberCount()}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[TaskManager] Skipping per-task unsubscribe because global subscription active for task {task.id} (global listeners={Interactable.GetOnAnyInteractSubscriberCount()}).");
+                    }
+                }
                 break;
             case "SceneExit":
                 SceneExitDetector.OnSceneExit -= OnSceneExitTrigger;
@@ -851,12 +922,24 @@ public class TaskManager : MonoBehaviour
 
     public void NextTask()
     {
-        // если уже на последней задаче — в меню:
+        // если уже на последней задаче — показать титры/финиш
         if (currentIndex >= tasks.Length - 1)
         {
-            Debug.Log("[TaskManager] All tasks done → back to MainMenu");
-            SceneManager.LoadScene("MainMenu");
-            return;
+            Debug.Log("[TaskManager] All tasks done -> trying to show credits via MainGameController");
+
+            var mgc = FindFirstObjectByType<MainGameController>();
+            if (mgc != null)
+            {
+                Debug.Log("[TaskManager] MainGameController found -> showing credits");
+                mgc.ShowCredits(); // по закрытию загружает MainMenu
+                return;
+            }
+            else
+            {
+                Debug.LogWarning("[TaskManager] MainGameController not found -> loading MainMenu as fallback");
+                SceneManager.LoadScene("MainMenu");
+                return;
+            }
         }
 
         var oldTask = GetCurrentTaskData();

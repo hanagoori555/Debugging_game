@@ -22,7 +22,7 @@ public class SceneExitDetector : MonoBehaviour
         }
 
         var task = tm.GetCurrentTaskData();
-        // включаем коллайдер, только когда ожидаем именно этот выход
+        // Включаем коллайдер, только когда ожидаем именно этот выход
         col.enabled = (task.triggerType == "SceneExit" && task.triggerParam == targetScene);
     }
 

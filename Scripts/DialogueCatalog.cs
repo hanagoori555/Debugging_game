@@ -67,7 +67,7 @@ public class DialogueCatalog : MonoBehaviour
 
         Debug.Log($"[DialogueCatalog] ReloadForActiveScene: Loaded state {stateId} for scene {sceneName}");
 
-        // Добавил проверки на null для безопасного логирования
+        // Добавила проверки на null для безопасного логирования
         Debug.Log($"[DialogueCatalog] interactables: {(_currentState.interactables != null ? string.Join(",", _currentState.interactables.Select(i => i.objectId)) : "null")}");
         Debug.Log($"[DialogueCatalog] autoDialogs count: {(_currentState.autoDialogs != null ? _currentState.autoDialogs.Length : 0)}");
         Debug.Log($"[DialogueCatalog] cutscenes: {(_currentState.cutscenes != null ? string.Join(",", _currentState.cutscenes.Select(c => c.cutsceneId)) : "null")}");

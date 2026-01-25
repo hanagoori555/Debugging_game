@@ -121,7 +121,7 @@ public class BootstrapController : MonoBehaviour
             // 2) Просим TaskManager единожды подавить катсцену для текущей задачи
             TaskManager.instance.SuppressCutsceneForCurrentTaskOnce();
 
-            // 3) Теперь можно снять ContinueMode — дальше игра будет обычной.
+            // 3) Теперь можно снять ContinueMode — дальше игра будет обычной
             TaskManager.instance.ConsumeContinueMode();
 
             _justLoadedFromMenu = false;
@@ -139,10 +139,10 @@ public class BootstrapController : MonoBehaviour
 
     private IEnumerator TriggerAutoAfterLoad()
     {
-        // ждём кадр, чтобы все объекты успели стартовать
+        // Ждём кадр, чтобы все объекты успели стартовать
         yield return new WaitForEndOfFrame();
 
-        // защита: если мы в режиме Continue (isLoading) — НЕ запускать Auto-сцены
+        // Защита: если мы в режиме Continue (isLoading) — НЕ запускать Auto-сцены
         if (TaskManager.instance != null && TaskManager.instance.IsContinueMode)
         {
             Debug.Log("[Bootstrap] TriggerAutoAfterLoad: ContinueMode active -> skipping auto triggers.");

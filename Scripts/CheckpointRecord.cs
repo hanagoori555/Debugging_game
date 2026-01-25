@@ -10,7 +10,6 @@ public class CheckpointRecord
     public float PosX { get; set; }
     public float PosY { get; set; }
 
-    // новое поле: запишем ID пройденных катсцен через запятую
     public string CompletedCutscenes { get; set; }
     public bool TutorialCompleted { get; set; }
 

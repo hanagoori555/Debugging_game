@@ -18,7 +18,6 @@ public class PlayerController : MonoBehaviour
     public AnimatorOverrideController altOverrideController;
     public AnimatorOverrideController altOverrideController2;
 
-    // --- persistent state between rebinds / model swaps ---
     private float _savedDirection = 0f;
     private bool _hasSavedDirection = false;
     private bool _savedIsWalking = false;
@@ -26,7 +25,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 _savedPosition = Vector3.zero;
     private bool _hasSavedPosition = false;
 
-    // текущий применённый вариант модели (-1 = не установлен)
+    // Текущий применённый вариант модели (-1 = не установлен)
     private int _currentVariant = -1;
 
     /// <summary>
@@ -51,7 +50,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // если defaultController не прописан вручную — возьмём текущий runtime controller
+            // Если defaultController не прописан вручную — возьмём текущий runtime controller
             if (defaultController == null)
             {
                 defaultController = animator.runtimeAnimatorController;
@@ -106,7 +105,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             // Есть TaskManager — он сам переместит игрока в OnSceneLoaded_MovePlayer.
-            // Если TaskManager ранее отложил спавн (при SceneExit), применим его прямо сейчас.
+            // Если TaskManager ранее отложил спавн (при SceneExit), применим его прямо сейчас
             Debug.Log("[Player] TaskManager present -> deferring spawn/teleport to TaskManager");
             TaskManager.instance.TryApplyDeferredSpawnToPlayer(this);
         }
@@ -116,7 +115,7 @@ public class PlayerController : MonoBehaviour
     {
         if (InputBlocked)
         {
-            // гасим остаточное движение и анимацию
+            // Гасим остаточное движение и анимацию
             if (rb != null) rb.linearVelocity = Vector2.zero;
             movement = Vector2.zero;
             if (animator != null) animator.SetBool("isWalking", false);
@@ -159,7 +158,7 @@ public class PlayerController : MonoBehaviour
     {
         if (animator != null)
         {
-            // Если параметров нет — Get... вернёт 0/false — это ок
+            // Если параметров нет — Get... вернёт 0/false
             _savedDirection = animator.GetFloat("Direction");
             _hasSavedDirection = true;
             _savedIsWalking = animator.GetBool("isWalking");
@@ -216,10 +215,9 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Если вариант уже применён — пропускаем, чтобы не делать лишний Rebind и не дергать аниматор зря.
+        // Если вариант уже применён — пропускаем,
         if (_currentVariant == variant)
         {
-            //Debug.Log("[PlayerController] SetModelVariant called with same variant -> skipping.");
             return;
         }
 
@@ -227,7 +225,7 @@ public class PlayerController : MonoBehaviour
         float prevDirection = animator.GetFloat("Direction");
         bool prevIsWalking = animator.GetBool("isWalking");
 
-        // Сохраним позицию/физику, если нужно (чтобы избежать дерганий)
+        // Сохраним позицию/физику
         Vector2 prevPos = rb != null ? rb.position : (Vector2)transform.position;
 
         // Применяем нужный контроллер
@@ -282,7 +280,7 @@ public class PlayerController : MonoBehaviour
         animator.SetFloat("Direction", prevDirection);
         animator.SetBool("isWalking", prevIsWalking);
 
-        // Восстановим позицию (если Rebind/смена контроллера повлияли, хотя обычно не влияют)
+        // Восстановим позицию
         if (rb != null) rb.position = prevPos;
         else transform.position = prevPos;
 

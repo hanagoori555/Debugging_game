@@ -12,6 +12,6 @@ public class NoteData
 public class ChartData
 {
     public int battleNumber;
-    public string musicPath;   // путь к AudioClip в Resources
+    public string musicPath;
     public NoteData[] notes;
 }

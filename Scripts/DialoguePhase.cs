@@ -3,7 +3,7 @@
 [System.Serializable]
 public class DialoguePhase
 {
-    [Tooltip("ID катсцены, после которой этот блок диалога доступен. Оставьте пустым, чтобы фаза была всегда доступна.")]
+    [Tooltip("ID катсцены, после которой этот блок диалога доступен")]
     public string requiredCutsceneId = "";
 
     [Tooltip("Набор строк диалога для этой фазы")]

@@ -20,7 +20,7 @@ public class GameSaveManager : MonoBehaviour
 
     void Awake()
     {
-        // Инициализируем БД (путь задаёт ваш Database.Init())
+        // Инициализируем БД
         Database.Init();
 
         if (instance == null)
@@ -78,15 +78,15 @@ public class GameSaveManager : MonoBehaviour
         var conn = new SQLiteConnection(Database.DbPath, SQLiteOpenFlags.ReadWrite);
         var rec = conn.Find<CheckpointRecord>(PlayerId)
                ?? new CheckpointRecord { PlayerID = PlayerId };
-        // разбиваем старый CSV
+        // Разбиваем старый CSV
         var list = new List<string>();
         if (!string.IsNullOrEmpty(rec.CompletedCutscenes))
             list = rec.CompletedCutscenes.Split(',').ToList();
-        // если ещё нет — добавляем
+        // Если ещё нет — добавляем
         if (!list.Contains(id))
             list.Add(id);
         rec.CompletedCutscenes = string.Join(",", list);
-        // сохраняем
+        // Сохраняем
         conn.InsertOrReplace(rec);
         conn.Close();
     }
@@ -102,11 +102,11 @@ public class GameSaveManager : MonoBehaviour
     }
 
     //=======================================
-    // Флаги обучения (Tutorial)
+    // Флаги обучения
     //=======================================
 
     /// <summary>
-    /// Устанавливает или сбрасывает флаг, что обучение (tutorial) пройдено.
+    /// Устанавливает или сбрасывает флаг, что обучение пройдено.
     /// </summary>
     public void SetTutorialCompleted(bool value)
     {

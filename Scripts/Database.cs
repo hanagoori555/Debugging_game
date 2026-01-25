@@ -7,7 +7,7 @@ public static class Database
     // Полный путь к файлу БД на устройстве
     public static string DbPath => Path.Combine(Application.persistentDataPath, "game.db");
 
-    // Вызывается при старте игры для создания файла и таблицы, если нужно
+    // Вызывается при старте игры для создания файла и таблицы
     public static void Init()
     {
         // Открываем или создаём БД

@@ -16,7 +16,7 @@ public class PauseMenuController : MonoBehaviour
         // Если есть UIManager в сцене — делегируем туда (единый источник правды)
         if (UIManager.instance != null)
         {
-            UIManager.instance.ForceOpenPause(); // добавим этот метод в UIManager
+            UIManager.instance.ForceOpenPause();
             return;
         }
 

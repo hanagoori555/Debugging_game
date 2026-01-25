@@ -9,20 +9,20 @@ public class RhythmNote : MonoBehaviour
 
     private bool canBeHit = false;
     private bool successfulHit = false;
-    private bool _handled = false;      // единственный флаг для предотвращения дублей
-    private bool isHolding = false;     // удержание для long notes
+    private bool _handled = false;      // Единственный флаг для предотвращения дублей
+    private bool isHolding = false;     // Удержание для long notes
     private float holdTime = 0f;
 
     // Для затемнения
     private SpriteRenderer _sr;
     private Color _originalColor;
-    private Color _darkColor;         // цвет для промаха
+    private Color _darkColor;         // Цвет для промаха
 
     // Настройка "высоты" для long note
     private const float longNoteHeightPerSec = 7.3f;
 
     /// <summary>
-    /// Инициализация перед спавном
+    /// Инициализация перед спавном.
     /// </summary>
     public void Initialize(int lane, float duration, KeyCode key)
     {
@@ -36,7 +36,7 @@ public class RhythmNote : MonoBehaviour
         // Масштабируем по Y
         transform.localScale = new Vector3(1f, h, 1f);
 
-        // Чтобы «вырасти» вверх, поднимаем ноту на половину дополнительной высоты
+        // Чтобы "вырасти" вверх, поднимаем ноту на половину дополнительной высоты
         float extra = h - 1f; // Если h==1 => короткая, extra==0
         transform.position += Vector3.up * (extra * 0.5f);
     }
@@ -56,15 +56,15 @@ public class RhythmNote : MonoBehaviour
 
     void Update()
     {
-        if (_handled) return; // если уже обработано — игнорируем всё
+        if (_handled) return; // Если уже обработано — игнорируем всё
 
         // Падение
         transform.Translate(Vector3.down * fallSpeed * Time.deltaTime, Space.World);
 
-        // для короткой ноты: если ушла вниз и ни разу не зафлашена
+        // Для короткой ноты: если ушла вниз и ни разу не зафлашена
         if (!successfulHit && !canBeHit && duration <= 0f && transform.position.y < -10f)
         {
-            // если нота ушла ниже экрана и не была в зоне — считаем промахом (один раз)
+            // Если нота ушла ниже экрана и не была в зоне — считаем промахом (один раз)
             RegisterAndShowMiss();
             return;
         }
@@ -72,7 +72,7 @@ public class RhythmNote : MonoBehaviour
         // Обработка ввода (примитивно — опрашиваем Input здесь)
         if (duration <= 0f)
         {
-            // короткая нота: реагируем на одножатие, только если сейчас в зоне
+            // Короткая нота: реагируем на одножатие, только если сейчас в зоне
             if (canBeHit && Input.GetKeyDown(key))
             {
                 RegisterAndShowHit();
@@ -100,11 +100,11 @@ public class RhythmNote : MonoBehaviour
             }
         }
 
-        // если отпустили раньше срока — промах (если мы были в зоне)
+        // Если отпустили раньше срока — промах (если мы были в зоне)
         if (isHolding && Input.GetKeyUp(key) && !_handled)
         {
             isHolding = false;
-            // если время удержания было недостаточным — промах
+            // Если время удержания было недостаточным — промах
             if (!successfulHit)
                 RegisterAndShowMiss();
         }
@@ -148,9 +148,7 @@ public class RhythmNote : MonoBehaviour
         var col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
 
-        // можно проиграть звук/эффект здесь
-
-        Destroy(gameObject, 0.05f); // небольшая задержка чтобы успели звуки/эффекты
+        Destroy(gameObject, 0.05f); // Небольшая задержка чтобы успели звуки/эффекты
     }
 
     private void RegisterAndShowMiss()

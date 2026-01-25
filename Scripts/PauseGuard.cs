@@ -14,7 +14,7 @@ public static class PauseGuard
     private static HashSet<string> _hideVisualReasons = new HashSet<string>();
 
     // Если хотя бы одна причина блокирует открытие -> блокируем.
-    // Также учитываем твои текущие глобальные индикаторы (Cutscene/Dialogue/InputBlocked).
+    // Также учитываем твои текущие глобальные индикаторы (Cutscene/Dialogue/InputBlocked)
     public static bool IsBlockedOpen =>
         _blockOpenReasons.Count > 0
         || (CutsceneController.instance != null && CutsceneController.IsCutscenePlaying)

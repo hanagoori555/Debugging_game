@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 
 public class SceneTransition : MonoBehaviour
 {
-    public string sceneToLoad; // Название следующей сцены
+    public string sceneToLoad;
 
     void OnTriggerEnter2D(Collider2D other)
     {
